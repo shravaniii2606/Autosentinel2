@@ -24,10 +24,65 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         after_path = os.path.join(BASE_DIR, f"data/images/zone_{zone['id']}_after.png")
 
     doc = SimpleDocTemplate(output_path, pagesize=A4,
-        topMargin=1.5 * cm, bottomMargin=1.5 * cm,
+        topMargin=1.8 * cm, bottomMargin=1.6 * cm,
         leftMargin=2 * cm, rightMargin=2 * cm)
-    styles = getSampleStyleSheet()
     story = []
+
+    def display(value):
+        """Convert report values into safe, readable table text."""
+        return escape(str(value if value not in (None, '') else 'Not available')).replace('_', ' ')
+
+    title_style = ParagraphStyle(
+        'report_title', fontSize=25, leading=30, fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#B91C1C'), spaceAfter=2,
+    )
+    sub_style = ParagraphStyle(
+        'report_subtitle', fontSize=11, leading=15, fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#334155'), spaceAfter=6,
+    )
+    meta_style = ParagraphStyle(
+        'report_meta', fontSize=8.5, leading=12, fontName='Helvetica',
+        textColor=colors.HexColor('#64748B'), spaceAfter=1,
+    )
+    section_style = ParagraphStyle(
+        'report_section', fontSize=13, leading=17, fontName='Helvetica-Bold',
+        textColor=colors.HexColor('#1E293B'), spaceBefore=2, spaceAfter=6,
+    )
+    table_header_style = ParagraphStyle(
+        'table_header', fontSize=8.5, leading=11, fontName='Helvetica-Bold', textColor=colors.white,
+    )
+    table_label_style = ParagraphStyle(
+        'table_label', fontSize=8.5, leading=11, fontName='Helvetica-Bold', textColor=colors.HexColor('#1E293B'),
+    )
+    table_value_style = ParagraphStyle(
+        'table_value', fontSize=8.5, leading=11, fontName='Helvetica', textColor=colors.HexColor('#0F172A'),
+    )
+
+    def report_table(rows, widths, header=True, font_size=8.5):
+        value_style = ParagraphStyle(
+            f'table_value_{font_size}', parent=table_value_style, fontSize=font_size, leading=font_size + 2.5,
+        )
+        label_style = ParagraphStyle(
+            f'table_label_{font_size}', parent=table_label_style, fontSize=font_size, leading=font_size + 2.5,
+        )
+        formatted = []
+        for row_index, row in enumerate(rows):
+            formatted.append([
+                Paragraph(display(value), table_header_style if header and row_index == 0 else (label_style if column == 0 else value_style))
+                for column, value in enumerate(row)
+            ])
+        table = Table(formatted, colWidths=widths, repeatRows=1 if header else 0, hAlign='LEFT')
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1E293B')) if header else ('BACKGROUND', (0, 0), (-1, -1), colors.white),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F8FAFC'), colors.white]),
+            ('GRID', (0, 0), (-1, -1), 0.35, colors.HexColor('#CBD5E1')),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+        return table
 
     severity_hex = {
         'CRITICAL': '#CC0000',
@@ -51,26 +106,20 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
     else:
         before_year, after_year = '2019', '2023'
 
-    title_style = ParagraphStyle('title', fontSize=22, fontName='Helvetica-Bold',
-        textColor=colors.HexColor('#CC0000'), spaceAfter=4)
     story.append(Paragraph('AutoSentinel', title_style))
-
-    sub_style = ParagraphStyle('sub', fontSize=11, fontName='Helvetica',
-        textColor=colors.HexColor('#444444'), spaceAfter=2)
     story.append(Paragraph('Unauthorized Construction Detection Report', sub_style))
     story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M IST')}  |  "
-        f'Area: {area_label}  |  Analysis Period: {before_year}-{after_year}',
-        ParagraphStyle('meta', fontSize=8, textColor=colors.HexColor('#888888'))))
-    story.append(HRFlowable(width='100%', thickness=1, color=colors.HexColor('#DDDDDD'), spaceAfter=12))
+        f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M IST')}  |  Analysis period: {before_year}–{after_year}",
+        meta_style))
+    story.append(Paragraph(f"Area analysed: {display(area_label)}", meta_style))
+    story.append(HRFlowable(width='100%', thickness=1, color=colors.HexColor('#CBD5E1'), spaceBefore=5, spaceAfter=12))
 
     sev_style = ParagraphStyle('sev', fontSize=16, fontName='Helvetica-Bold',
         textColor=colors.HexColor(severity_hex.get(sev, '#006600')), spaceAfter=4)
     story.append(Paragraph(f'Severity: {sev}  |  Risk Score: {score}/100', sev_style))
     story.append(Spacer(1, 0.3 * cm))
 
-    story.append(Paragraph('Zone Details', ParagraphStyle('h2', fontSize=13,
-        fontName='Helvetica-Bold', spaceAfter=6, textColor=colors.HexColor('#222222'))))
+    story.append(Paragraph('Zone Details', section_style))
 
     details_data = [
         ['Field', 'Value'],
@@ -83,38 +132,24 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         ['Bhuvan Land Classification', str(bhuvan_land_type)],
         ['Bhuvan Overlap / Confidence', f"{bhuvan_overlap:.1f}% / {bhuvan_confidence}"],
         ['Bhuvan Data Source', str(bhuvan_source)],
-        ['OSM Overlays', ', '.join(zone.get('osm_flags', [])) or 'None'],
-        ['Legal Flags', ', '.join(zone.get('legal_flags', [])) or 'None'],
+        ['OSM Overlays', ', '.join(flag.replace('_', ' ') for flag in zone.get('osm_flags', [])) or 'None'],
+        ['Legal Flags', ', '.join(flag.replace('_', ' ') for flag in zone.get('legal_flags', [])) or 'None'],
         ['Risk Boost', f"{zone.get('risk_boost_total', 0):.1f}"],
     ]
 
-    table = Table(details_data, colWidths=[6 * cm, 11 * cm])
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#222222')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F9F9F9'), colors.white]),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-        ('PADDING', (0, 0), (-1, -1), 8),
-        ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
-    ]))
-    story.append(table)
+    story.append(report_table(details_data, [4.8 * cm, 12.2 * cm]))
     story.append(Spacer(1, 0.5 * cm))
 
-    story.append(Paragraph('Bhuvan Land-use Verification', ParagraphStyle('h2_bhuvan', fontSize=13,
-        fontName='Helvetica-Bold', spaceAfter=6, textColor=colors.HexColor('#222222'))))
+    story.append(Paragraph('Bhuvan Land-use Verification', section_style))
     story.append(Paragraph(
         f"The zone was checked against the available ISRO Bhuvan-compatible land-use layer. "
         f"Dominant classification: <b>{escape(str(bhuvan_land_type))}</b>; polygon overlap: <b>{bhuvan_overlap:.1f}%</b>; "
         f"confidence: <b>{escape(str(bhuvan_confidence))}</b>. Source: {escape(str(bhuvan_source))}.",
-        ParagraphStyle('bhuvan_note', fontSize=9, textColor=colors.HexColor('#555555'),
+        ParagraphStyle('bhuvan_note', fontSize=9, textColor=colors.HexColor('#475569'),
             leading=14, spaceAfter=10)))
 
     story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#DDDDDD'), spaceAfter=8))
-    story.append(Paragraph('How the Risk Score Was Calculated',
-        ParagraphStyle('h2', fontSize=13, fontName='Helvetica-Bold',
-            spaceAfter=6, textColor=colors.HexColor('#222222'))))
+    story.append(Paragraph('How the Risk Score Was Calculated', section_style))
 
     if area > 50000:
         score_reason = (
@@ -172,17 +207,7 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         ['Final Score', f"{score}/100", f"Severity: {sev}"],
     ]
 
-    breakdown_table = Table(score_breakdown_data, colWidths=[5 * cm, 5 * cm, 7 * cm])
-    breakdown_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8),
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F5F5F5'), colors.white]),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-        ('PADDING', (0, 0), (-1, -1), 7),
-    ]))
-    story.append(breakdown_table)
+    story.append(report_table(score_breakdown_data, [4.2 * cm, 4.2 * cm, 8.6 * cm], font_size=8))
     story.append(Spacer(1, 0.3 * cm))
 
     story.append(Paragraph(score_reason,
@@ -192,9 +217,7 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         ParagraphStyle('body2', fontSize=9, textColor=colors.HexColor('#555555'),
             leading=14, spaceAfter=8)))
     story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#DDDDDD'), spaceAfter=8))
-    story.append(Paragraph('Satellite Evidence',
-        ParagraphStyle('h2', fontSize=13, fontName='Helvetica-Bold',
-            spaceAfter=6, textColor=colors.HexColor('#222222'))))
+    story.append(Paragraph('Satellite Evidence', section_style))
 
     if os.path.exists(before_path) and os.path.exists(after_path):
         story.append(Paragraph(
