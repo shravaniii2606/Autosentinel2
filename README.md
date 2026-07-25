@@ -152,9 +152,9 @@ The dashboard expects the backend running at `http://localhost:8000`.
 - **Microsoft Building Footprints** for structure verification
 
 ## Images
-<img width="1920" height="1080" alt="Screenshot (169)" src="https://github.com/user-attachments/assets/5170b9de-f880-44e7-a00e-517e35176330" />
-<img width="1920" height="1080" alt="Screenshot (170)" src="https://github.com/user-attachments/assets/080e0b87-5e58-4bcb-bbd0-841b941e7aa5" />
-<img width="1920" height="1080" alt="Screenshot (171)" src="https://github.com/user-attachments/assets/03e04b5e-ba2b-47ff-8254-081a36634a98" />
+<img width="1112" height="895" alt="image" src="https://github.com/user-attachments/assets/95179508-2220-473d-a33f-e24b64a51e40" />
+<img width="1918" height="933" alt="image" src="https://github.com/user-attachments/assets/4cbf1c0e-5b92-4fd5-a95c-d6a7d3a27126" />
+<img width="1911" height="921" alt="image" src="https://github.com/user-attachments/assets/7e5e6294-18f4-44f5-86b6-f203124065bd" />
 <img width="998" height="849" alt="image" src="https://github.com/user-attachments/assets/735f5362-be5b-4c42-bb54-1a972aa81e49" />
 
 
