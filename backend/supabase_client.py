@@ -11,6 +11,7 @@ Never commit the service key. It belongs server-side only.
 
 from __future__ import annotations
 
+import math
 import os
 import threading
 from typing import Iterable
@@ -56,11 +57,55 @@ _ZONE_COLUMNS = {
     "area_label", "period_label",
 }
 
+_NUMERIC_COLUMNS = {
+    "lat", "lon", "area_sqm", "risk_score", "bhuvan_confidence",
+    "bhuvan_overlap_percent", "risk_boost_total", "vision_confidence",
+}
+
+_CONFIDENCE_LABELS = {
+    "unknown": None,
+    "low": 25.0,
+    "medium": 60.0,
+    "high": 90.0,
+}
+
+
+def _to_float(value):
+    if value is None or isinstance(value, bool):
+        return None
+
+    if isinstance(value, (int, float)):
+        number = float(value)
+        return number if math.isfinite(number) else None
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+
+        label_value = _CONFIDENCE_LABELS.get(text.lower())
+        if label_value is not None or text.lower() in _CONFIDENCE_LABELS:
+            return label_value
+
+        if text.endswith("%"):
+            text = text[:-1].strip()
+
+        try:
+            number = float(text)
+        except ValueError:
+            return None
+        return number if math.isfinite(number) else None
+
+    return None
+
 
 def _to_row(zone: dict, source: str) -> dict:
     row = {k: v for k, v in zone.items() if k in _ZONE_COLUMNS}
     row["id"] = str(zone.get("id"))
     row["source"] = source
+    for column in _NUMERIC_COLUMNS:
+        if column in row:
+            row[column] = _to_float(row[column])
     return row
 
 

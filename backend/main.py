@@ -1,19 +1,3 @@
-from dotenv import load_dotenv
-load_dotenv()
-
-from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-try:
-    from backend.assistant import answer_officer_query
-    assistant_import_error = None
-except Exception as exc:
-    # The map API must remain available when the optional AI-assistant SDKs or
-    # credentials have not been configured on a local development machine.
-    answer_officer_query = None
-    assistant_import_error = str(exc)
-
 import subprocess
 import sys
 import os
@@ -22,10 +6,36 @@ import uuid
 import threading
 import importlib.util
 import numpy as np
+from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 try:
-    from backend.gee_auth import init_earth_engine
+    from backend.gee_auth import (
+        describe_earth_engine_permission_error,
+        get_configured_service_account_email,
+        init_earth_engine,
+        load_backend_env,
+    )
 except ImportError:
-    from gee_auth import init_earth_engine
+    from gee_auth import (
+        describe_earth_engine_permission_error,
+        get_configured_service_account_email,
+        init_earth_engine,
+        load_backend_env,
+    )
+
+load_backend_env()
+
+try:
+    from backend.assistant import answer_officer_query
+    assistant_import_error = None
+except Exception as exc:
+    # The map API must remain available when the optional AI-assistant SDKs or
+    # credentials have not been configured on a local development machine.
+    answer_officer_query = None
+    assistant_import_error = str(exc)
 
 try:
     from backend.supabase_client import upsert_zones, fetch_zones
@@ -489,6 +499,21 @@ def get_job(job_id: str):
     if not job:
         return {"status": "error", "error": "Job not found"}
     return _sanitize_job(job)
+
+
+def is_earth_engine_scan_error(exc: Exception) -> bool:
+    error_text = str(exc).lower()
+    return any(
+        marker in error_text
+        for marker in (
+            "earth engine",
+            "earthengine",
+            "service_account",
+            "gee_service_account",
+            "replace_me",
+        )
+    )
+
 
 def run_gee_pipeline(job_id: str, bbox: dict):
     print(f"[JOB {job_id}] Starting GEE pipeline for bbox: {bbox}")
