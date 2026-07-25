@@ -11,6 +11,7 @@ import 'leaflet-draw/dist/leaflet.draw.css'
 import 'leaflet-draw'
 
 
+
 interface Zone {
   id: number | string
   location_name?: string
@@ -677,6 +678,10 @@ function Dashboard() {
   <div className="text-2xl font-bold text-blue-600">{summary?.microsoft_confirmed || 0}</div>
   <div className="text-xs text-slate-500">Microsoft AI Verified</div>
 </div>
+
+
+
+
         {/* Coordinate jump */}
         <div className="p-4 border-b border-slate-200">
           <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">GO TO COORDINATES</p>
