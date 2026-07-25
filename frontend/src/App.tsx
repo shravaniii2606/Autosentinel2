@@ -290,7 +290,7 @@ function ImageSlider({ beforeUrl, afterUrl, boxes = [] }: { beforeUrl: string, a
       {/* After image (bottom) */}
       <img
         src={afterUrl}
-        alt="After 2023"
+        alt="After 2026"
         className="absolute inset-0 w-full h-full object-cover"
         onLoad={(e) => setImageSize({
           width: e.currentTarget.naturalWidth,
@@ -357,7 +357,7 @@ function ImageSlider({ beforeUrl, afterUrl, boxes = [] }: { beforeUrl: string, a
         2019
       </div>
       <div className="absolute bottom-2 right-2 bg-slate-900/80 text-white text-xs px-2 py-0.5 rounded z-10">
-        2023
+        2026
       </div>
     </div>
   )
