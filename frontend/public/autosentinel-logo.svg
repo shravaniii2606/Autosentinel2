@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-labelledby="title">
+  <title id="title">AutoSentinel logo</title>
+  <rect width="240" height="240" fill="#f2f9eb"/>
+  <path fill="#64a333" d="M165 12A115 115 0 1 0 165 228l-46-33a76 76 0 1 1 0-151z"/>
+  <path fill="#64a333" d="M165 54a76 76 0 0 1 46-10 115 115 0 0 1 0 151 76 76 0 0 1-46-11 76 76 0 0 0 0-130z"/>
+  <circle cx="125" cy="119" r="47" fill="#64a333"/>
+</svg>
