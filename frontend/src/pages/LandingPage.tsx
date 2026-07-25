@@ -1,6 +1,7 @@
 import beforeSatelliteImage from '../../../data/images/zone_127_before.png'
 import afterSatelliteImage from '../../../data/images/zone_127_after.png'
 import SatelliteViewer from '../SatelliteViewer';
+import { useState } from 'react'
 const capabilities = [
   {
     number: '01',
@@ -32,31 +33,41 @@ const workflow = [
 ]
 
 export default function LandingPage() {
+  const [showDemo, setShowDemo] = useState(false)
   return (
     <main className="min-h-screen bg-[#07100f] text-slate-100 selection:bg-amber-400 selection:text-slate-950">
-      <header className="border-b border-white/10 bg-[#07100f]/95">
+      
         <div className="mx-auto flex max-w-7xl items-center px-5 py-4 sm:px-8">
-          <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home">
-            <img src="/autosentinel-logo.svg" alt="" className="h-8 w-8" />
-            <span className="text-sm font-semibold tracking-[0.18em] text-white">AUTOSENTINEL</span>
-          </a>
-        </div>
-      </header>
+    <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home">
+    <img src="/autosentinel-logo.svg" alt="" className="h-20 w-20" />
+    <span className="text-2xl font-bold tracking-[0.18em] text-white">AUTOSENTINEL</span>
+  </a>
+</div>
+      
 
       <section className="relative overflow-hidden border-b border-white/10">
-        <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(148,163,184,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.12)_1px,transparent_1px)] [background-size:48px_48px]" />
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-5 py-18 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:py-28">
-          <div>
-            <p className="mb-5 font-mono text-xs tracking-[0.18em] text-amber-300">SATELLITE INTELLIGENCE FOR LAND AUTHORITIES</p>
-            <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Find unauthorised construction before it becomes irreversible.
-            </h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-              AutoSentinel compares Sentinel-2 imagery year over year to surface new construction, rank its risk, and give municipal officers evidence they can act on.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <a href="/dashboard" className="inline-flex justify-center bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-amber-300">SCAN AN AREA</a>
-            </div>
+  <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(148,163,184,.12)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,.12)_1px,transparent_1px)] [background-size:48px_48px]" />
+  <div className="relative mx-auto grid max-w-7xl gap-12 px-5 pt-8 pb-18 sm:px-8 lg:grid-cols-[1.02fr_.98fr] lg:items-center lg:pt-10 lg:pb-24">
+    <div>
+      <p className="mb-5 font-mono text-xs tracking-[0.18em] text-amber-300">SATELLITE INTELLIGENCE FOR LAND AUTHORITIES</p>
+      <h1 className="max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+        Find unauthorised construction before it becomes irreversible.
+      </h1>
+      <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+        AutoSentinel compares Sentinel-2 imagery year over year to surface new construction, rank its risk, and give municipal officers evidence they can act on.
+      </p>
+      <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+        <a href="/dashboard" className="inline-flex justify-center rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 transition-all duration-200 ease-out hover:bg-amber-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/20 active:translate-y-0 active:scale-[0.98]">
+          SCAN AN AREA
+        </a>
+  <button
+    onClick={() => setShowDemo(true)}
+    className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-bold text-white transition-all duration-200 ease-out hover:bg-white/10 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]"
+  >
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+    WATCH DEMO
+  </button>
+</div>
             <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 font-mono text-xs text-slate-400">
               <span>INPUT: SENTINEL-2</span><span>METHOD: NDBI CHANGE</span><span>OUTPUT: ACTIONABLE ZONES</span>
             </div>
@@ -115,6 +126,30 @@ export default function LandingPage() {
       <footer className="border-t border-white/10 bg-[#050a0a]">
         <div className="border-t border-white/10 py-5 text-center font-mono text-[10px] tracking-wider text-slate-500">AUTOSENTINEL / CONSTRUCTION INTELLIGENCE</div>
       </footer>
+      {showDemo && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+    onClick={() => setShowDemo(false)}
+  >
+    <div
+      className="relative w-full max-w-4xl"
+      onClick={e => e.stopPropagation()}
+    >
+      <button
+        onClick={() => setShowDemo(false)}
+        className="absolute -top-10 right-0 text-sm font-medium text-white/70 transition-colors hover:text-white"
+      >
+        CLOSE ✕
+      </button>
+      <video
+        src="/demo.mp4"
+        controls
+        autoPlay
+        className="w-full rounded-xl border border-white/10 shadow-2xl"
+      />
+    </div>
+  </div>
+)}
     </main>
   )
 }
