@@ -62,12 +62,12 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="border border-slate-600 bg-[#0b1716] p-3 shadow-2xl shadow-black/30">
-  <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3 font-mono text-[10px] tracking-wider text-slate-400">
-    <span>SENTINEL-2</span>
-  </div>
-  <SatelliteViewer />
-</div>
+            <div className="border border-slate-600 bg-[#0b1716] p-3 shadow-2xl shadow-black/30">
+              <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3 font-mono text-[10px] tracking-wider text-slate-400">
+                <span>SENTINEL-2</span>
+              </div>
+              <SatelliteViewer />
+            </div>
         </div>
       </section>
 
