@@ -155,7 +155,8 @@ The dashboard expects the backend running at `http://localhost:8000`.
 <img width="1920" height="1080" alt="Screenshot (169)" src="https://github.com/user-attachments/assets/5170b9de-f880-44e7-a00e-517e35176330" />
 <img width="1920" height="1080" alt="Screenshot (170)" src="https://github.com/user-attachments/assets/080e0b87-5e58-4bcb-bbd0-841b941e7aa5" />
 <img width="1920" height="1080" alt="Screenshot (171)" src="https://github.com/user-attachments/assets/03e04b5e-ba2b-47ff-8254-081a36634a98" />
-<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/15fc0d14-5828-43ff-acf6-d435bc0eee2c" />
+<img width="998" height="849" alt="image" src="https://github.com/user-attachments/assets/735f5362-be5b-4c42-bb54-1a972aa81e49" />
+
 
 
 
