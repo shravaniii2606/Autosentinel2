@@ -119,17 +119,7 @@ export default function LandingPage() {
   )
 }
 
-function SatellitePanel({ label, variant }: { label: string; variant: 'before' | 'after' }) {
-  const isAfter = variant === 'after'
-  return <div className="overflow-hidden border border-white/10 bg-[#172925]">
-    <div className="relative aspect-[4/5] overflow-hidden bg-[#1b332c]">
-      <img src={isAfter ? afterSatelliteImage : beforeSatelliteImage} alt={isAfter ? 'Satellite image of the inspection zone in 2023' : 'Satellite image of the inspection zone in 2019'} className="h-full w-full object-cover" />
-      <span className="absolute bottom-3 left-3 rounded bg-[#07100f]/90 px-2.5 py-1 font-mono text-xs font-semibold text-white">{isAfter ? '2023' : '2019'}</span>
-      {isAfter && <><span className="absolute left-[44%] top-[37%] h-[20%] w-[25%] border-2 border-amber-300 bg-amber-400/10" /><span className="absolute left-[39%] top-[31%] border-x-5 border-b-7 border-x-transparent border-b-amber-400" /><span className="absolute left-[40%] top-[25%] rounded bg-[#07100f]/90 px-2 py-1 font-mono text-[9px] text-amber-200">CHANGE DETECTED</span></>}
-    </div>
-    <p className="border-t border-white/10 px-3 py-2 font-mono text-[9px] tracking-wider text-slate-400">{label}</p>
-  </div>
-}
+
 
 function CapabilityCard({ number, title, text }: { number: string; title: string; text: string }) {
   return <article className="border border-white/10 bg-[#07100f] p-6 transition hover:border-amber-400/60"><p className="font-mono text-xs text-amber-300">{number}</p><h3 className="mt-8 text-xl font-semibold text-white">{title}</h3><p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">{text}</p></article>
