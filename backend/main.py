@@ -899,7 +899,8 @@ async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks
     """Fetch before/after satellite thumbnail for any coordinate on demand"""
     
     # Check if already cached
-    safe_id = origin = str(request.base_url).rstrip('/')
+    safe_id = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in str(zone_id))
+    origin = str(request.base_url).rstrip('/')
     before_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'images', f'zone_{safe_id}_before.png')
     after_path  = os.path.join(os.path.dirname(__file__), '..', 'data', 'images', f'zone_{safe_id}_after.png')
     
