@@ -641,7 +641,9 @@ function Dashboard() {
         {/* Header */}
         <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400"/>
+            
+            <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home"></a>
+           <img src="/autosentinel-logo.svg" alt="" className="h-10 w-10" />
             <h1 className="text-lg font-bold text-white">AutoSentinel</h1>
           </div>
         </div>
