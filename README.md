@@ -11,7 +11,7 @@ an AI assistant natural-language questions about any flagged zone.
 - Mitanshi Khanna
 - Shravani Kolekar
 
-<img width="1920" height="1080" alt="Screenshot (169)" src="https://github.com/user-attachments/assets/8a3c182c-ab28-4d77-ace0-417e35214867" />
+<img width="1892" height="801" alt="image" src="https://github.com/user-attachments/assets/0795cc4c-bfed-44ff-9d60-1248350de0e2" />
 
 ## How it works
 
