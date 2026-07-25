@@ -1,6 +1,6 @@
 import beforeSatelliteImage from '../../../data/images/zone_127_before.png'
 import afterSatelliteImage from '../../../data/images/zone_127_after.png'
-
+import SatelliteViewer from '../SatelliteViewer';
 const capabilities = [
   {
     number: '01',
@@ -63,17 +63,11 @@ export default function LandingPage() {
           </div>
 
           <div className="border border-slate-600 bg-[#0b1716] p-3 shadow-2xl shadow-black/30">
-            <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3 font-mono text-[10px] tracking-wider text-slate-400">
-              <span>COMPARISON / DAHISAR, MUMBAI</span><span>DELTA: + BUILT SURFACE</span>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <SatellitePanel label="BASELINE / PRIOR YEAR" variant="before" />
-              <SatellitePanel label="CURRENT / THIS YEAR" variant="after" />
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 font-mono text-[10px] text-slate-400">
-              <span>LOCATION: DAHISAR, MUMBAI</span><span className="text-amber-300">HIGH SEVERITY SIGNAL</span>
-            </div>
-          </div>
+  <div className="mb-3 flex items-center justify-between border-b border-white/10 pb-3 font-mono text-[10px] tracking-wider text-slate-400">
+    <span>SENTINEL-2</span>
+  </div>
+  <SatelliteViewer />
+</div>
         </div>
       </section>
 
