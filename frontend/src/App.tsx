@@ -638,7 +638,7 @@ function Dashboard() {
 
       {/* Sidebar */}
       <div className="flex w-96 flex-shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0a0a0a]">
-      <AssistantPanel />
+      {/* <AssistantPanel /> */}
         {/* Header */}
         <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-2 mb-1">
