@@ -1,5 +1,4 @@
-import beforeSatelliteImage from '../../../data/images/zone_127_before.png'
-import afterSatelliteImage from '../../../data/images/zone_127_after.png'
+
 import SatelliteViewer from '../SatelliteViewer';
 import { useState } from 'react'
 const capabilities = [
