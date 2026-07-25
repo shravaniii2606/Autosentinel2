@@ -336,15 +336,20 @@ def get_zone_report(zone_id: str):  # changed int to str
             return {"error": "Live scan report unavailable until scan completes"}
         zone = live_zone
 
-    module = load_generate_report_module()
     before_path = os.path.join(base, 'data', 'images', f'zone_{zone_id}_before.png')
     after_path = os.path.join(base, 'data', 'images', f'zone_{zone_id}_after.png')
-    module.generate_report(
-        zone,
-        report_path,
-        before_path=before_path,
-        after_path=after_path,
-    )
+    try:
+        module = load_generate_report_module()
+        module.generate_report(
+            zone,
+            report_path,
+            before_path=before_path,
+            after_path=after_path,
+        )
+    except Exception as exc:
+        # Return an actionable HTTP error instead of a JSON response with a
+        # successful status, which browsers otherwise display as a blank tab.
+        raise HTTPException(status_code=500, detail=f"Unable to generate report: {exc}") from exc
 
     if os.path.exists(report_path):
         return FileResponse(
@@ -352,7 +357,7 @@ def get_zone_report(zone_id: str):  # changed int to str
             media_type='application/pdf',
             filename=f'autosentinel_report_zone_{zone_id}.pdf'
         )
-    return {"error": "Report not found"}
+    raise HTTPException(status_code=404, detail="Report was not created")
 
 @app.get("/zones/{zone_id}/vision")
 def get_zone_vision(zone_id: str):
