@@ -320,16 +320,17 @@ def get_by_severity(level: str):
     return {"zones": filtered, "total": len(filtered)}
 
 @app.get("/zones/{zone_id}/images")
-def get_zone_images(zone_id: str):
+def get_zone_images(zone_id: str, request: Request):
     base = os.path.join(os.path.dirname(__file__), '..')
     before_path = os.path.join(base, 'data', 'images', f'zone_{zone_id}_before.png')
     after_path  = os.path.join(base, 'data', 'images', f'zone_{zone_id}_after.png')
     has_before = os.path.exists(before_path)
     has_after  = os.path.exists(after_path)
+    origin = str(request.base_url).rstrip('/')
     return {
         "has_images": has_before and has_after,
-        "before_url": f"http://localhost:8000/images/zone_{zone_id}_before.png" if has_before else None,
-        "after_url":  f"http://localhost:8000/images/zone_{zone_id}_after.png"  if has_after  else None,
+        "before_url": f"{origin}/images/zone_{zone_id}_before.png" if has_before else None,
+        "after_url":  f"{origin}/images/zone_{zone_id}_after.png"  if has_after  else None,
     }
 
 @app.get("/zones/{zone_id}/report")
@@ -894,11 +895,11 @@ def run_gee_pipeline(job_id: str, bbox: dict):
 
 
 @app.get("/zones/{zone_id}/live-images")
-async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks: BackgroundTasks):
+async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks: BackgroundTasks, request: Request):
     """Fetch before/after satellite thumbnail for any coordinate on demand"""
     
     # Check if already cached
-    safe_id = ''.join(ch if ch.isalnum() or ch in ('-', '_') else '_' for ch in str(zone_id))
+    safe_id = origin = str(request.base_url).rstrip('/')
     before_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'images', f'zone_{safe_id}_before.png')
     after_path  = os.path.join(os.path.dirname(__file__), '..', 'data', 'images', f'zone_{safe_id}_after.png')
     
@@ -908,8 +909,8 @@ async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks
     if valid_cached_image(before_path) and valid_cached_image(after_path):
         return {
             "has_images": True,
-            "before_url": f"http://localhost:8000/images/zone_{safe_id}_before.png",
-            "after_url":  f"http://localhost:8000/images/zone_{safe_id}_after.png"
+            "before_url": f"{origin}/images/zone_{safe_id}_before.png",
+            "after_url":  f"{origin}/images/zone_{safe_id}_after.png"
         }
     
     # Fetch from GEE
@@ -954,8 +955,8 @@ async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks
 
         return {
             "has_images": True,
-            "before_url": f"http://localhost:8000/images/zone_{safe_id}_before.png",
-            "after_url":  f"http://localhost:8000/images/zone_{safe_id}_after.png"
+            "before_url": f"{origin}/images/zone_{safe_id}_before.png",
+            "after_url":  f"{origin}/images/zone_{safe_id}_after.png"
         }
 
     except Exception as e:
