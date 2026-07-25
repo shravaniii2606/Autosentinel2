@@ -198,8 +198,8 @@ function getRiskBadges(zone: Zone | null) {
 
   const badges = []
   if (zone.crane_present) badges.push({ label: 'LIVE CONSTRUCTION', className: 'bg-red-600 text-white' })
-  if (zone.building_present) badges.push({ label: 'STRUCTURE DETECTED', className: 'bg-slate-200 text-slate-900' })
-  if (zone.container_present) badges.push({ label: 'MATERIALS FOUND', className: 'bg-slate-200 text-slate-900' })
+  if (zone.building_present) badges.push({ label: 'STRUCTURE DETECTED', className: 'bg-amber-400/15 text-amber-300' })
+  if (zone.container_present) badges.push({ label: 'MATERIALS FOUND', className: 'bg-neutral-800 text-neutral-200' })
 
   return badges
 }
@@ -282,7 +282,7 @@ function ImageSlider({ beforeUrl, afterUrl, boxes = [] }: { beforeUrl: string, a
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-48 overflow-hidden rounded-lg cursor-col-resize select-none"
+      className="relative h-48 w-full cursor-col-resize select-none overflow-hidden rounded-xl border border-white/10"
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
       onClick={(e) => updateSlider(e.clientX)}
@@ -344,7 +344,7 @@ function ImageSlider({ beforeUrl, afterUrl, boxes = [] }: { beforeUrl: string, a
 
       {/* Slider line */}
       <div
-        className="absolute top-0 bottom-0 w-0.5 bg-sky-50 z-10"
+        className="absolute top-0 bottom-0 z-10 w-0.5 bg-amber-300"
         style={{ left: `${sliderPos}%` }}
       >
         <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 bg-sky-50 rounded-full flex items-center justify-center shadow-lg">
@@ -396,7 +396,7 @@ function ZoneImages({ zoneId, lat, lon, boxes = [] }: { zoneId: number | string,
 
   if (loading) {
     return (
-      <div className="mt-3 p-3 bg-sky-50 rounded text-xs text-slate-500 text-center animate-pulse">
+      <div className="mt-3 rounded-xl border border-white/10 bg-neutral-900 p-3 text-center text-xs text-neutral-400 animate-pulse">
         Fetching satellite imagery...
       </div>
     )
@@ -404,7 +404,7 @@ function ZoneImages({ zoneId, lat, lon, boxes = [] }: { zoneId: number | string,
 
   if (!images || !images.has_images) {
     return (
-      <div className="mt-3 p-2 bg-sky-50 rounded text-xs text-slate-500 text-center">
+      <div className="mt-3 rounded-xl border border-white/10 bg-neutral-900 p-2 text-center text-xs text-neutral-400">
         Satellite imagery unavailable for this zone
       </div>
     )
@@ -633,40 +633,40 @@ function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-sky-50 text-slate-900 overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#0a0a0a] text-neutral-100">
 
       {/* Sidebar */}
-      <div className="w-96 flex-shrink-0 bg-sky-50 border-r border-slate-200 flex flex-col overflow-y-auto">
+      <div className="flex w-96 flex-shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0a0a0a]">
       <AssistantPanel />
         {/* Header */}
-        <div className="p-5 border-b border-slate-200">
+        <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
-            <h1 className="text-lg font-bold text-slate-900">AutoSentinel</h1>
+            <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400"/>
+            <h1 className="text-lg font-bold text-white">AutoSentinel</h1>
           </div>
         </div>
 
         {/* Summary cards */}
-        <div className="p-4 border-b border-slate-200">
-  <p className="text-xs text-slate-500 mb-3 font-medium tracking-wider">DETECTION SUMMARY</p>
+        <div className="border-b border-white/10 p-4">
+  <p className="mb-3 text-xs font-medium tracking-wider text-neutral-400">DETECTION SUMMARY</p>
   <div className="grid grid-cols-2 gap-2">
     {Object.entries(liveSummary.severity_breakdown).map(([level, count]) => (
       <div
         key={level}
         onClick={() => setSeverityFilter(severityFilter === level ? 'ALL' : level)}
-        className="bg-sky-50 rounded-lg p-3 cursor-pointer hover:bg-sky-100 transition-colors"
+        className="cursor-pointer rounded-2xl border border-white/5 bg-neutral-900 p-4 transition-all duration-200 ease-out hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lg hover:shadow-white/5"
         style={{ borderLeft: `3px solid ${severityColor[level]}` }}
       >
-        <div className="text-2xl font-bold" style={{ color: severityColor[level] }}>
+        <div className="text-3xl font-bold" style={{ color: severityColor[level] }}>
           {count}
         </div>
-        <div className="text-xs text-slate-500 mt-0.5">{level}</div>
+        <div className="mt-0.5 text-xs text-neutral-400">{level}</div>
       </div>
     ))}
   </div>
-  <div className="mt-2 bg-sky-50 rounded-lg p-3">
-    <div className="text-2xl font-bold text-slate-900">{liveSummary.total}</div>
-    <div className="text-xs text-slate-500">
+  <div className="mt-2 rounded-2xl border border-white/5 bg-neutral-900 p-4">
+    <div className="text-3xl font-bold text-white">{liveSummary.total}</div>
+    <div className="text-xs text-neutral-400">
       Total Flagged Zones
       {zones.length > 931 && (
         <span className="text-green-400 ml-2">+{zones.length - 931} live</span>
@@ -674,36 +674,36 @@ function Dashboard() {
     </div>
   </div>
 </div>
-<div className="mt-2 bg-sky-50 rounded-lg p-3">
-  <div className="text-2xl font-bold text-blue-600">{summary?.microsoft_confirmed || 0}</div>
-  <div className="text-xs text-slate-500">Microsoft AI Verified</div>
+<div className="mt-2 rounded-2xl border border-white/5 bg-neutral-900 p-4">
+  
+  <div className="text-xs text-neutral-400">Microsoft AI Verified</div>
 </div>
 
 
 
 
         {/* Coordinate jump */}
-        <div className="p-4 border-b border-slate-200">
-          <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">GO TO COORDINATES</p>
+        <div className="border-b border-white/10 p-4">
+          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">GO TO COORDINATES</p>
           <div className="grid grid-cols-2 gap-2">
             <input
               type="text"
               value={coordinateLat}
               onChange={e => setCoordinateLat(e.target.value)}
               placeholder="Latitude"
-              className="w-full rounded-md border border-slate-300 bg-sky-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+              className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
             />
             <input
               type="text"
               value={coordinateLng}
               onChange={e => setCoordinateLng(e.target.value)}
               placeholder="Longitude"
-              className="w-full rounded-md border border-slate-300 bg-sky-50 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-blue-500"
+              className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
             />
           </div>
           <button
             onClick={flyToCoordinates}
-            className="mt-3 w-full rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-colors hover:bg-blue-500"
+            className="mt-3 w-full rounded-xl bg-amber-400 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-black transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/10 active:scale-[0.98]"
           >
             Center map
           </button>
@@ -714,7 +714,7 @@ function Dashboard() {
                 setCoordinateLng(String(selectedZone.lon))
                 setTimeout(flyToCoordinates, 0)
               }}
-              className="mt-2 w-full rounded-md border border-blue-500 bg-sky-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-blue-600 transition-colors hover:bg-blue-100"
+              className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 active:scale-[0.98]"
             >
               Use selected zone coordinates
             </button>
@@ -722,18 +722,18 @@ function Dashboard() {
         </div>
 
         {/* Severity filter */}
-        <div className="p-4 border-b border-slate-200">
-          <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY SEVERITY</p>
-          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+        <div className="border-b border-white/10 p-4">
+          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">FILTER BY SEVERITY</p>
+          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)} className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-white focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10">
             <option value="ALL">All severities</option>
             {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(level => <option key={level} value={level}>{level}</option>)}
           </select>
         </div>
 
         {/* Violation type filter */}
-        <div className="p-4 border-b border-slate-200">
-          <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY VIOLATION</p>
-          <select value={violationFilter} onChange={e => setViolationFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+        <div className="border-b border-white/10 p-4">
+          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">FILTER BY VIOLATION</p>
+          <select value={violationFilter} onChange={e => setViolationFilter(e.target.value)} className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-white focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10">
             <option value="ALL">All violation types</option>
             {Array.from(new Set(zones.map(zone => zone.violation_type).filter(Boolean))).sort().map(type => (
               <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
@@ -741,9 +741,9 @@ function Dashboard() {
           </select>
         </div>
         {/* Vision filters */}
-        <div className="p-4 border-b border-slate-200">
-          <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY VISION</p>
-          <select value={visionFilter} onChange={e => setVisionFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+        <div className="border-b border-white/10 p-4">
+          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">FILTER BY VISION</p>
+          <select value={visionFilter} onChange={e => setVisionFilter(e.target.value)} className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-white focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10">
             <option value="ALL">All vision results</option>
             <option value="verified">Vision verified</option>
             <option value="crane">Crane detected</option>
@@ -753,7 +753,7 @@ function Dashboard() {
         </div>
 
     {selectedZone?.microsoft_confirmed && (
-  <div className="text-xs px-2 py-1 rounded mb-3 inline-block bg-blue-600 text-white ml-2">
+  <div className="mb-3 ml-2 inline-block rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
     ✓ Microsoft Verified
   </div>
 )}
