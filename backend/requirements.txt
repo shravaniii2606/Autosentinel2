@@ -13,3 +13,4 @@ pyogrio>=0.7
 supabase
 mem0ai
 openai
+reportlab
