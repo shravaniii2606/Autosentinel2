@@ -58,7 +58,6 @@ async def assistant_query(request: Request):
     return {"answer": answer}
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'flagged_zones.json')
-LIVE_ZONES_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'live_zones.json')
 
 VISION_DEFAULTS = {
     "construction_detected": False,
@@ -226,14 +225,10 @@ with open(DATA_PATH, encoding='utf-8') as f:
 
 
 def load_persisted_live_zones():
-    if not os.path.exists(LIVE_ZONES_PATH):
-        return []
     try:
-        with open(LIVE_ZONES_PATH, encoding='utf-8') as f:
-            data = json.load(f)
-        return [normalize_zone(zone) for zone in data]
+        return [normalize_zone(zone) for zone in fetch_zones(source="live")]
     except Exception as exc:
-        print(f"Failed to load persisted live zones: {exc}")
+        print(f"[Supabase] Failed to load live zones: {exc}")
         return []
 
 
@@ -270,16 +265,13 @@ def save_live_zones(new_zones):
         existing[str(zone.get('id'))] = normalize_zone(zone)
     persisted_live_zones[:] = list(existing.values())
 
-    # Local JSON stays as a fast local cache / fallback if Supabase is unreachable
-    with open(LIVE_ZONES_PATH, 'w', encoding='utf-8') as f:
-        json.dump(_sanitize_obj(persisted_live_zones), f, ensure_ascii=False, indent=2)
-
     try:
         written = upsert_zones(new_zones, source="live")
         print(f"[Supabase] Upserted {written} live zones")
     except Exception as exc:
-        # Never let Supabase being unreachable break a scan the user is waiting on
-        print(f"[Supabase] Upsert failed, continuing with local JSON only: {exc}")
+        # These zones still show up for the rest of this session (persisted_live_zones
+        # was already updated above), but won't survive a restart until Supabase is reachable.
+        print(f"[Supabase] Upsert FAILED — zones held in memory only for this session: {exc}")
 
 # In-memory job store
 JOBS = {}
