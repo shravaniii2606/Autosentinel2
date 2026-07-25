@@ -6,6 +6,7 @@ import axios from 'axios'
 import AssistantPanel from './AssistantPanel'
 import { API_BASE_URL } from './config'
 import LandingPage from './pages/LandingPage'
+import { formatViolationType } from './utils/violationLabel'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-draw/dist/leaflet.draw.css'
 import 'leaflet-draw'
@@ -736,7 +737,7 @@ function Dashboard() {
           <select value={violationFilter} onChange={e => setViolationFilter(e.target.value)} className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-xs font-medium text-white focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10">
             <option value="ALL">All violation types</option>
             {Array.from(new Set(zones.map(zone => zone.violation_type).filter(Boolean))).sort().map(type => (
-              <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
+              <option key={type} value={type}>{formatViolationType(type)}</option>
             ))}
           </select>
         </div>
@@ -784,7 +785,7 @@ function Dashboard() {
                 className="text-xs px-2 py-1 rounded mb-3 inline-block"
                 style={{ backgroundColor: violationColor[selectedZone.violation_type] || '#374151' }}
               >
-                {selectedZone.violation_type.replace(/_/g, ' ')}
+                {formatViolationType(selectedZone.violation_type)}
               </div>
 
               <div className="mb-3 rounded bg-sky-50 border border-slate-200 p-3 text-xs space-y-1.5">
@@ -950,7 +951,7 @@ function Dashboard() {
                     {zone.severity}
                   </strong>
                   <br />
-                  {zone.violation_type.replace(/_/g, ' ')}
+                  {formatViolationType(zone.violation_type)}
                   <br />
                   Area: {(zone.area_sqm / 10000).toFixed(2)} ha
                   <br />
