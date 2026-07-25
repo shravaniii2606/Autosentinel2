@@ -52,13 +52,6 @@ interface YoloBox {
   y2: number
 }
 
-interface VisionFilters {
-  verified: boolean
-  crane: boolean
-  building: boolean
-  container: boolean
-}
-
 interface Summary {
   total: number
   severity_breakdown: {
@@ -111,13 +104,6 @@ const visionObjectColors: Record<string, string> = {
   building: '#f97316',
   crane: '#ef4444',
   container: '#eab308'
-}
-
-const defaultVisionFilters: VisionFilters = {
-  verified: false,
-  crane: false,
-  building: false,
-  container: false
 }
 
 const drawnAreaStorageKey = 'autosentinel.drawnArea'
@@ -535,7 +521,7 @@ function Dashboard() {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null)
   const [severityFilter, setSeverityFilter] = useState<string>('ALL')
   const [violationFilter, setViolationFilter] = useState<string>('ALL')
-  const [visionFilters, setVisionFilters] = useState<VisionFilters>(defaultVisionFilters)
+  const [visionFilter, setVisionFilter] = useState<string>('ALL')
   const [scanStatus, setScanStatus] = useState<{
     active: boolean
     progress: string
@@ -544,6 +530,7 @@ function Dashboard() {
   const [mapInstance, setMapInstance] = useState<any>(null)
   const [coordinateLat, setCoordinateLat] = useState<string>('')
   const [coordinateLng, setCoordinateLng] = useState<string>('')
+  const [reportStatus, setReportStatus] = useState<string>('')
 
   const liveSummary = {
     total: zones.length,
@@ -573,11 +560,11 @@ function Dashboard() {
   const filtered = zones.filter(z => {
     const sev = severityFilter === 'ALL' || z.severity === severityFilter
     const vio = violationFilter === 'ALL' || z.violation_type === violationFilter
-    const vision =
-      (!visionFilters.verified || Boolean(z.construction_detected)) &&
-      (!visionFilters.crane || Boolean(z.crane_present)) &&
-      (!visionFilters.building || Boolean(z.building_present)) &&
-      (!visionFilters.container || Boolean(z.container_present))
+    const vision = visionFilter === 'ALL' ||
+      (visionFilter === 'verified' && Boolean(z.construction_detected)) ||
+      (visionFilter === 'crane' && Boolean(z.crane_present)) ||
+      (visionFilter === 'building' && Boolean(z.building_present)) ||
+      (visionFilter === 'container' && Boolean(z.container_present))
     // If a circle is drawn, also filter by distance
     if (circleCenter && circleRadius != null) {
       const toRad = (deg: number) => deg * Math.PI / 180
@@ -596,10 +583,36 @@ function Dashboard() {
   const selectedStatuses = getVisionStatuses(selectedZone)
   const selectedRiskBadges = getRiskBadges(selectedZone)
   const selectedBoxes = getVisionBoxes(selectedZone)
-  const headerArea = selectedZone?.area_label || summary?.area
-  const headerPeriod = selectedZone?.period_label || summary?.period
-  const toggleVisionFilter = (key: keyof VisionFilters) => {
-    setVisionFilters(prev => ({ ...prev, [key]: !prev[key] }))
+
+  const downloadReport = async () => {
+    if (!selectedZone) return
+
+    setReportStatus('Preparing PDF...')
+    try {
+      const response = await fetch(`${API_BASE_URL}/zones/${encodeURIComponent(String(selectedZone.id))}/report`)
+      if (!response.ok) {
+        let message = 'Unable to generate the report.'
+        try {
+          const body = await response.json()
+          message = body.detail || body.error || message
+        } catch {}
+        throw new Error(message)
+      }
+
+      const blob = await response.blob()
+      if (blob.size === 0) throw new Error('The generated report was empty.')
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `autosentinel_report_zone_${selectedZone.id}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setReportStatus('Report downloaded.')
+    } catch (error) {
+      setReportStatus(error instanceof Error ? error.message : 'Unable to download the report.')
+    }
   }
 
   const flyToCoordinates = () => {
@@ -630,12 +643,6 @@ function Dashboard() {
             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"/>
             <h1 className="text-lg font-bold text-slate-900">AutoSentinel</h1>
           </div>
-          <p className="text-xs text-slate-500">Unauthorized Construction Detection System</p>
-          {headerArea && (
-            <p className="text-xs text-slate-500 mt-1">
-              {headerArea} · {headerPeriod}
-            </p>
-          )}
         </div>
 
         {/* Summary cards */}
@@ -712,71 +719,32 @@ function Dashboard() {
         {/* Severity filter */}
         <div className="p-4 border-b border-slate-200">
           <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY SEVERITY</p>
-          <div className="flex flex-wrap gap-1.5">
-            {['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(level => (
-              <button
-                key={level}
-                onClick={() => setSeverityFilter(level)}
-                className="text-xs px-3 py-1 rounded-full transition-colors"
-                style={{
-                  backgroundColor: severityFilter === level
-                    ? (severityColor[level] || '#6366f1')
-                    : '#374151',
-                  color: 'white'
-                }}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
+          <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+            <option value="ALL">All severities</option>
+            {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].map(level => <option key={level} value={level}>{level}</option>)}
+          </select>
         </div>
 
         {/* Violation type filter */}
         <div className="p-4 border-b border-slate-200">
           <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY VIOLATION</p>
-          <div className="flex flex-wrap gap-1.5">
-            {['ALL', 'FOREST_ENCROACHMENT', 'AGRICULTURAL_LAND', 'UNVERIFIED_ZONE'].map(type => (
-              <button
-                key={type}
-                onClick={() => setViolationFilter(type)}
-                className="text-xs px-2 py-1 rounded-full transition-colors"
-                style={{
-                  backgroundColor: violationFilter === type
-                    ? (violationColor[type] || '#6366f1')
-                    : '#374151',
-                  color: 'white'
-                }}
-              >
-                {type.replace(/_/g, ' ')}
-              </button>
+          <select value={violationFilter} onChange={e => setViolationFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+            <option value="ALL">All violation types</option>
+            {Array.from(new Set(zones.map(zone => zone.violation_type).filter(Boolean))).sort().map(type => (
+              <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
             ))}
-          </div>
+          </select>
         </div>
         {/* Vision filters */}
         <div className="p-4 border-b border-slate-200">
           <p className="text-xs text-slate-500 mb-2 font-medium tracking-wider">FILTER BY VISION</p>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { key: 'verified', label: 'Vision Verified' },
-              { key: 'crane', label: 'Crane Detected' },
-              { key: 'building', label: 'Building Detected' },
-              { key: 'container', label: 'Container Detected' },
-            ].map(filter => (
-              <button
-                key={filter.key}
-                onClick={() => toggleVisionFilter(filter.key as keyof VisionFilters)}
-                className="text-xs px-2 py-1 rounded-full transition-colors"
-                style={{
-                  backgroundColor: visionFilters[filter.key as keyof VisionFilters]
-                    ? '#0f766e'
-                    : '#374151',
-                  color: 'white'
-                }}
-              >
-                {filter.label}
-              </button>
-            ))}
-          </div>
+          <select value={visionFilter} onChange={e => setVisionFilter(e.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:border-blue-500">
+            <option value="ALL">All vision results</option>
+            <option value="verified">Vision verified</option>
+            <option value="crane">Crane detected</option>
+            <option value="building">Building detected</option>
+            <option value="container">Container detected</option>
+          </select>
         </div>
 
     {selectedZone?.microsoft_confirmed && (
@@ -819,10 +787,6 @@ function Dashboard() {
                   <span>Location</span>
                   <span className="font-semibold text-slate-900 text-right">{selectedZone.location_name || selectedZone.area_label}</span>
                 </div>
-                <div className="text-slate-500">
-                  <span className="font-semibold text-slate-700">Recommended action: </span>
-                  {selectedZone.action}
-                </div>
               </div>
 
               <div className="mb-3 space-y-2">
@@ -861,41 +825,32 @@ function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-3 rounded bg-sky-50 border border-slate-200 p-3 text-xs space-y-2">
-                <div className="border-b border-slate-200 pb-2">
-                  <p className="font-semibold text-slate-700">ISRO Bhuvan land-use verification</p>
+              <div className="mt-3 rounded-lg border border-blue-100 bg-white p-3 text-xs">
+                <div className="mb-3 flex items-center gap-2 border-b border-blue-100 pb-2">
+                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+                  <p className="font-semibold text-slate-800">ISRO Bhuvan land-use verification</p>
                 </div>
-                <div className="flex justify-between gap-3 text-slate-500">
-                  <span>Classification</span>
-                  <span className="font-semibold text-slate-900 text-right">
-                    {selectedZone.bhuvan_land_type || 'Not assessed'}
-                  </span>
+                <div className="rounded-md bg-blue-50 p-2.5">
+                  <p className="text-[11px] font-medium uppercase tracking-wide text-blue-700">Classification</p>
+                  <p className="mt-1 font-semibold leading-snug text-slate-900">{selectedZone.bhuvan_land_type || 'Not assessed'}</p>
                 </div>
-                <div className="flex justify-between gap-3 text-slate-500">
-                  <span>Overlap / confidence</span>
-                  <span className="font-semibold text-slate-900 text-right">
-                    {typeof selectedZone.bhuvan_overlap_percent === 'number'
-                      ? `${selectedZone.bhuvan_overlap_percent.toFixed(1)}% / ${selectedZone.bhuvan_confidence || 'Unknown'}`
-                      : 'Not available'}
-                  </span>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div className="rounded-md border border-slate-100 p-2">
+                    <p className="text-[11px] text-slate-500">Overlap</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{typeof selectedZone.bhuvan_overlap_percent === 'number' ? `${selectedZone.bhuvan_overlap_percent.toFixed(1)}%` : 'Not available'}</p>
+                  </div>
+                  <div className="rounded-md border border-slate-100 p-2">
+                    <p className="text-[11px] text-slate-500">Confidence</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{selectedZone.bhuvan_confidence || 'Unknown'}</p>
+                  </div>
                 </div>
-                
-                <div className="flex justify-between text-slate-500">
-                  <span>OSM overlays</span>
-                  <span className="font-semibold text-slate-900">
-                    {selectedZone.osm_flags?.map(flag => flag.replace(/_/g, ' ')).join(', ') || 'None'}
-                  </span>
+                <div className="mt-2 border-t border-slate-100 pt-2">
+                  <p className="text-[11px] text-slate-500">OSM overlays</p>
+                  <p className="mt-0.5 break-words font-medium leading-snug text-slate-800">{selectedZone.osm_flags?.map(flag => flag.replace(/_/g, ' ')).join(', ') || 'None'}</p>
                 </div>
-                <div className="flex justify-between text-slate-500">
-                  <span>Risk boost</span>
-                  <span className="font-semibold text-slate-900">
-                    {selectedZone.risk_boost_total?.toFixed(1) ?? '0.0'}
-                  </span>
-                </div>
-                <div className="text-slate-500">
-                  <span className="font-semibold text-slate-700">Assessment: </span>
-                  {selectedZone.legal_explanation}
-                </div>
+                {selectedZone.legal_explanation && (
+                  <p className="mt-2 border-t border-slate-100 pt-2 leading-relaxed text-slate-600">{selectedZone.legal_explanation}</p>
+                )}
               </div>
               {/* Details */}
               <div className="space-y-1.5 text-xs text-slate-500">
@@ -907,10 +862,6 @@ function Dashboard() {
                   <span className="text-slate-500">Coordinates</span>
                   <span>{selectedZone.lat.toFixed(4)}, {selectedZone.lon.toFixed(4)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Zone ID</span>
-                  <span>#{selectedZone.id}</span>
-                </div>
                 {selectedZone.bbox && (
                   <div className="flex justify-between gap-3">
                     <span className="text-slate-500">BBox (minX, minY, maxX, maxY)</span>
@@ -921,13 +872,19 @@ function Dashboard() {
 
              {/* Download report button */}
 
-  <a href={`${API_BASE_URL}/zones/${selectedZone.id}/report`}
-  target="_blank"
-  rel="noopener noreferrer"
-  className="mt-3 w-full block text-center bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-4 rounded transition-colors"
->
-  Download Official Report (PDF)
-</a>
+  <button
+    type="button"
+    onClick={downloadReport}
+    disabled={reportStatus === 'Preparing PDF...'}
+    className="mt-3 w-full block text-center bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-xs font-bold py-2 px-4 rounded transition-colors"
+  >
+    {reportStatus === 'Preparing PDF...' ? 'Preparing Report...' : 'Download Official Report (PDF)'}
+  </button>
+  {reportStatus && (
+    <p className={`mt-2 text-xs ${reportStatus === 'Report downloaded.' ? 'text-emerald-600' : reportStatus === 'Preparing PDF...' ? 'text-slate-500' : 'text-red-600'}`}>
+      {reportStatus}
+    </p>
+  )}
               {/* Before/After slider */}
 <ZoneImages zoneId={selectedZone.id} lat={selectedZone.lat} lon={selectedZone.lon} />
             </div>
