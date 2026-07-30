@@ -31,7 +31,6 @@ interface Zone {
   osm_flags?: string[]
   legal_flags?: string[]
   risk_boost_total?: number
-  legal_explanation?: string
   microsoft_confirmed: boolean
   construction_detected?: boolean
   objects_found?: string[]
@@ -129,7 +128,7 @@ function getScanSummaryFromZones(zones: Zone[], fallback: Summary | null): Summa
     },
     microsoft_confirmed: zones.filter(z => z.microsoft_confirmed).length,
     area: latest?.area_label || fallback?.area || 'Selected area',
-    period: latest?.period_label || fallback?.period || '2024 vs 2025',
+    period: latest?.period_label || fallback?.period || '2019 vs 2026',
   }
 }
 
@@ -642,7 +641,9 @@ function Dashboard() {
         {/* Header */}
         <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-2 mb-1">
-            <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400"/>
+            
+            <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home"></a>
+           <img src="/autosentinel-logo.svg" alt="" className="h-10 w-10" />
             <h1 className="text-lg font-bold text-white">AutoSentinel</h1>
           </div>
         </div>
@@ -847,16 +848,13 @@ function Dashboard() {
                   </div>
                   <div className="rounded-md border border-slate-100 p-2">
                     <p className="text-[11px] text-slate-500">Confidence</p>
-                    <p className="mt-0.5 font-semibold text-slate-900">{selectedZone.bhuvan_confidence || 'Unknown'}</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{selectedZone.bhuvan_confidence || 'Assessment pending'}</p>
                   </div>
                 </div>
                 <div className="mt-2 border-t border-slate-100 pt-2">
                   <p className="text-[11px] text-slate-500">OSM overlays</p>
                   <p className="mt-0.5 break-words font-medium leading-snug text-slate-800">{selectedZone.osm_flags?.map(flag => flag.replace(/_/g, ' ')).join(', ') || 'None'}</p>
                 </div>
-                {selectedZone.legal_explanation && (
-                  <p className="mt-2 border-t border-slate-100 pt-2 leading-relaxed text-slate-600">{selectedZone.legal_explanation}</p>
-                )}
               </div>
               {/* Details */}
               <div className="space-y-1.5 text-xs text-slate-500">
@@ -1161,16 +1159,16 @@ function Dashboard() {
         <div className="mt-3 space-y-1.5">
           {[
             'Connecting to Google Earth Engine...',
-            'Fetching 2024 satellite imagery...',
-            'Fetching 2025 satellite imagery...',
+            'Fetching 2019 satellite imagery...',
+            'Fetching 2026 satellite imagery...',
             'Running NDBI change detection...',
             'Downloading results from GEE...',
             'Extracting flagged zones...',
           ].map((step, i) => {
             const steps = [
               'Connecting',
-              'Fetching 2024',
-              'Fetching 2025',
+              'Fetching 2019',
+              'Fetching 2026',
               'Running NDBI',
               'Downloading',
               'Extracting',

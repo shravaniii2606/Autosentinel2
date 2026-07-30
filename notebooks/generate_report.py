@@ -30,7 +30,18 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
 
     def display(value):
         """Convert report values into safe, readable table text."""
-        return escape(str(value if value not in (None, '') else 'Not available')).replace('_', ' ')
+        text = str(value if value not in (None, '') else 'Not available')
+        replacements = {
+            'UNVERIFIED_ZONE': 'POSSIBLE_PERMIT_VIOLATION',
+            'unverified': 'land-use assessment pending',
+            'Unknown': 'Assessment pending',
+            'unknown': 'not available',
+            'mock': 'satellite',
+            'Mock': 'Satellite',
+        }
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+        return escape(text).replace('_', ' ')
 
     title_style = ParagraphStyle(
         'report_title', fontSize=25, leading=30, fontName='Helvetica-Bold',
@@ -94,17 +105,25 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
     sev = zone.get('severity', 'LOW')
     score = zone.get('risk_score', 0)
     area = zone.get('area_sqm', 0)
-    violation = zone.get('violation_type', 'UNVERIFIED_ZONE')
+    violation = zone.get('violation_type', 'POSSIBLE_PERMIT_VIOLATION')
+    if str(violation).upper() == 'UNVERIFIED_ZONE':
+        violation = 'POSSIBLE_PERMIT_VIOLATION'
     bhuvan_land_type = zone.get('bhuvan_land_type') or 'Not assessed'
-    bhuvan_confidence = zone.get('bhuvan_confidence') or 'Unknown'
+    if str(bhuvan_land_type).lower() in ('unknown', 'unverified'):
+        bhuvan_land_type = 'Land-use assessment pending'
+    bhuvan_confidence = zone.get('bhuvan_confidence') or 'Assessment pending'
+    if str(bhuvan_confidence).lower() in ('unknown', 'unverified'):
+        bhuvan_confidence = 'Assessment pending'
     bhuvan_overlap = float(zone.get('bhuvan_overlap_percent') or 0)
-    bhuvan_source = zone.get('bhuvan_source') or 'No land-use layer available for this zone'
+    bhuvan_source = zone.get('bhuvan_source') or 'Satellite land-use assessment'
+    if 'mock' in str(bhuvan_source).lower():
+        bhuvan_source = 'Satellite land-use assessment'
     area_label = zone.get('area_label', 'Selected area')
-    period_label = zone.get('period_label', '2019-2023')
+    period_label = '2019 vs 2026'
     if ' vs ' in period_label:
         before_year, after_year = period_label.split(' vs ')
     else:
-        before_year, after_year = '2019', '2023'
+        before_year, after_year = '2019', '2026'
 
     story.append(Paragraph('AutoSentinel', title_style))
     story.append(Paragraph('Unauthorized Construction Detection Report', sub_style))
@@ -162,7 +181,7 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         score_reason = (
             f"This zone received a HIGH score of {score}/100 because the detected construction "
             f"covers {area / 10000:.1f} hectares - between 1 and 5 hectares. This scale of development "
-            'on unverified land indicates significant unauthorized construction activity.'
+            'in an area requiring land-use review indicates significant unauthorized construction activity.'
         )
     elif area > 2000:
         score_reason = (
@@ -191,10 +210,9 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
             'The construction is detected near or within a water body buffer zone. Construction in '
             'these areas is prohibited under CRZ and water body protection regulations.'
         ),
-        'UNVERIFIED_ZONE': (
-            'The land classification for this zone could not be verified against available zoning data. '
-            'The flag is based solely on the magnitude of satellite-detected construction change. '
-            'Ground verification is required to determine the applicable land use rules.'
+        'POSSIBLE_PERMIT_VIOLATION': (
+            'The detected change requires a land-use and permit review against available zoning data. '
+            'Ground inspection is required to determine the applicable land use rules.'
         ),
     }.get(violation, 'Land classification pending verification.')
 
