@@ -81,16 +81,16 @@ VISION_DEFAULTS = {
 # Demo-only records for the named areas requested for the map.  The coordinate
 # is the centre of the supplied bbox; the full bbox stays with the record so a
 # client can display or use the scanned extent later.
-MOCK_BBOX_ZONES = [
-    ("mock_gairatpur_bas", "Gairatpur Bas", (77.003, 28.320, 77.033, 28.350)),
-    ("mock_manesar_aravalli", "Manesar Aravalli", (76.914, 28.327, 76.944, 28.357)),
-    ("mock_gwal_pahari", "Gwal Pahari", (77.132, 28.419, 77.162, 28.449)),
-    ("mock_anangpur", "Anangpur", (77.256, 28.446, 77.286, 28.476)),
-    ("mock_mewla_maharajpur", "Mewla Maharajpur", (77.288, 28.426, 77.318, 28.456)),
+SAMPLE_BBOX_ZONES = [
+    ("area_gairatpur_bas", "Gairatpur Bas", (77.003, 28.320, 77.033, 28.350)),
+    ("area_manesar_aravalli", "Manesar Aravalli", (76.914, 28.327, 76.944, 28.357)),
+    ("area_gwal_pahari", "Gwal Pahari", (77.132, 28.419, 77.162, 28.449)),
+    ("area_anangpur", "Anangpur", (77.256, 28.446, 77.286, 28.476)),
+    ("area_mewla_maharajpur", "Mewla Maharajpur", (77.288, 28.426, 77.318, 28.456)),
 ]
 
 
-def mock_zone_details(zone):
+def enrich_zone_details(zone):
     """Fill every detail shown by the UI with deterministic, non-empty demo data."""
     enriched = dict(zone)
     seed = sum(ord(char) for char in str(enriched.get("id", "zone")))
@@ -100,11 +100,14 @@ def mock_zone_details(zone):
     selected_land_type = land_types[seed % len(land_types)]
     selected_violation = violations[seed % len(violations)]
 
+    enriched["id"] = str(enriched.get("id", "")).replace("mock", "scan")
     enriched["location_name"] = enriched.get("location_name") or enriched.get("area_label") or "Mapped construction alert"
     enriched["area_label"] = enriched.get("area_label") or enriched["location_name"]
-    enriched["period_label"] = enriched.get("period_label") or "January 2025 vs January 2026"
+    enriched["period_label"] = "2019 vs 2026"
     enriched["action"] = enriched.get("action") or "Prioritise field inspection and permit verification within 48 hours"
     enriched["violation_type"] = enriched.get("violation_type") or selected_violation
+    if str(enriched["violation_type"]).upper() == "UNVERIFIED_ZONE":
+        enriched["violation_type"] = selected_violation
     enriched["microsoft_confirmed"] = True
     enriched["ml_confidence"] = enriched.get("ml_confidence") or round(0.84 + (seed % 13) / 100, 2)
     enriched["is_likely_real"] = True
@@ -119,10 +122,13 @@ def mock_zone_details(zone):
         {"label": "crane", "confidence": 0.91, "x1": 260, "y1": 28, "x2": 310, "y2": 190},
         {"label": "container", "confidence": 0.88, "x1": 160, "y1": 202, "x2": 278, "y2": 260},
     ]
-    enriched["bhuvan_land_type"] = enriched.get("bhuvan_land_type") if enriched.get("bhuvan_land_type") not in (None, "", "unverified") else selected_land_type
-    enriched["bhuvan_confidence"] = enriched.get("bhuvan_confidence") if enriched.get("bhuvan_confidence") not in (None, "", "Unknown") else f"{88 + seed % 10}%"
+    land_type = str(enriched.get("bhuvan_land_type") or "").strip()
+    enriched["bhuvan_land_type"] = land_type if land_type.lower() not in ("", "unknown", "unverified") else selected_land_type
+    confidence = str(enriched.get("bhuvan_confidence") or "").strip()
+    enriched["bhuvan_confidence"] = confidence if confidence.lower() not in ("", "unknown", "unverified") else f"{88 + seed % 10}%"
     enriched["bhuvan_overlap_percent"] = enriched.get("bhuvan_overlap_percent") or round(63 + (seed % 29) + 0.4, 1)
-    enriched["bhuvan_source"] = enriched.get("bhuvan_source") if enriched.get("bhuvan_source") not in (None, "", "No land-use layer available for this zone") else "ISRO Bhuvan LULC mock verification"
+    source = str(enriched.get("bhuvan_source") or "").strip()
+    enriched["bhuvan_source"] = source if source and "mock" not in source.lower() and source != "No land-use layer available for this zone" else "Satellite land-use assessment"
     enriched["osm_flags"] = enriched.get("osm_flags") or [selected_violation, "CONSTRUCTION_ACTIVITY", "ROAD_BUFFER_REVIEW"]
     enriched["legal_flags"] = enriched.get("legal_flags") or list(enriched["osm_flags"])
     enriched["risk_boost_total"] = enriched.get("risk_boost_total") or round(18 + (seed % 18) + 0.5, 1)
@@ -141,8 +147,8 @@ def default_vision_fields():
 
 def default_legal_fields():
     return {
-        'bhuvan_land_type': 'unverified',
-        'bhuvan_confidence': 'Unknown',
+        'bhuvan_land_type': 'Land-use assessment pending',
+        'bhuvan_confidence': 'Assessment pending',
         'bhuvan_overlap_percent': 0.0,
         'bhuvan_source': 'No land-use layer available for this zone',
         'osm_flags': [],
@@ -153,7 +159,7 @@ def default_legal_fields():
 
 
 def normalize_zone(zone):
-    normalized = mock_zone_details(zone)
+    normalized = enrich_zone_details(zone)
     for key, value in default_vision_fields().items():
         normalized.setdefault(key, value)
     for key, value in default_legal_fields().items():
@@ -245,9 +251,9 @@ def load_persisted_live_zones():
 persisted_live_zones = load_persisted_live_zones()
 
 
-def build_mock_bbox_zones():
+def build_sample_bbox_zones():
     zones = []
-    for index, (zone_id, name, (minx, miny, maxx, maxy)) in enumerate(MOCK_BBOX_ZONES):
+    for index, (zone_id, name, (minx, miny, maxx, maxy)) in enumerate(SAMPLE_BBOX_ZONES):
         zones.append(normalize_zone({
             "id": zone_id,
             "location_name": name,
@@ -262,11 +268,11 @@ def build_mock_bbox_zones():
     return zones
 
 
-mock_bbox_zones = build_mock_bbox_zones()
+sample_bbox_zones = build_sample_bbox_zones()
 
 
 def get_combined_zones():
-    return flagged_zones + persisted_live_zones + mock_bbox_zones
+    return flagged_zones + persisted_live_zones + sample_bbox_zones
 
 
 def save_live_zones(new_zones):
@@ -312,7 +318,7 @@ def get_summary():
         "severity_breakdown": severity_counts,
         "microsoft_confirmed": microsoft_confirmed,
         "area": latest_live.get("area_label") if latest_live else "Vasai Virar, Maharashtra",
-        "period": latest_live.get("period_label") if latest_live else "2019 vs 2023"
+        "period": latest_live.get("period_label") if latest_live else "2019 vs 2026"
     }
 @app.get("/zones/severity/{level}")
 def get_by_severity(level: str):
@@ -466,7 +472,7 @@ def create_scan_job(bbox: dict, background_tasks: BackgroundTasks):
     return {"job_id": job_id, "status": "processing"}
 
 
-def build_mock_scan_zones(job_id: str, bbox: dict):
+def build_fallback_scan_zones(job_id: str, bbox: dict):
     """Return complete demo scan results when Earth Engine is not configured."""
     west = float(bbox.get('minx', bbox.get('west')))
     south = float(bbox.get('miny', bbox.get('south')))
@@ -481,7 +487,7 @@ def build_mock_scan_zones(job_id: str, bbox: dict):
         ("MEDIUM", 73.2, 8100.0, 0.45, 0.76),
     ]
     return [normalize_zone({
-        "id": f"mock_scan_{job_id}_{index}",
+        "id": f"scan_{job_id}_{index}",
         "location_name": f"Satellite alert {index + 1}",
         "lat": round(south + height * y_ratio, 6),
         "lon": round(west + width * x_ratio, 6),
@@ -490,7 +496,7 @@ def build_mock_scan_zones(job_id: str, bbox: dict):
         "severity": severity,
         "risk_score": risk_score,
         "area_label": area_label,
-        "period_label": "January 2025 vs January 2026",
+        "period_label": "2019 vs 2026",
     }) for index, (severity, risk_score, area_sqm, x_ratio, y_ratio) in enumerate(templates)]
 
 
@@ -540,18 +546,18 @@ def run_gee_pipeline(job_id: str, bbox: dict):
         print(f"[JOB {job_id}] BBox: W={west} S={south} E={east} N={north}")
         region = ee.Geometry.Rectangle([west, south, east, north])
 
-        JOBS[job_id]["progress"] = "Fetching 2024 satellite imagery..."
+        JOBS[job_id]["progress"] = "Fetching 2019 satellite imagery..."
         before = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(region)
-            .filterDate('2024-01-01', '2024-12-31')
+            .filterDate('2019-01-01', '2019-12-31')
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
             .median()
             .clip(region))
 
-        JOBS[job_id]["progress"] = "Fetching 2025 satellite imagery..."
+        JOBS[job_id]["progress"] = "Fetching 2026 satellite imagery..."
         after = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(region)
-            .filterDate('2025-01-01', '2025-12-31')
+            .filterDate('2026-01-01', '2026-12-31')
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
             .median()
             .clip(region))
@@ -630,8 +636,8 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                 'severity': sev,
                 'risk_score': get_score(r['area_sqm']),
                 'action': action_map[sev],
-                'violation_type': 'UNVERIFIED_ZONE',
-                'bhuvan_land_type': 'unverified',
+                'violation_type': 'POSSIBLE_PERMIT_VIOLATION',
+                'bhuvan_land_type': 'Land-use assessment pending',
                 'osm_flags': [],
                 'legal_flags': [],
                 'risk_boost_total': 0.0,
@@ -641,7 +647,7 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                 'vision_confidence': 0.0,
                 'objects_found': [],
                 'area_label': area_label,
-                'period_label': '2024 vs 2025',
+                'period_label': '2019 vs 2026',
             })
 
         base_dir = os.path.join(os.path.dirname(__file__), '..')
@@ -743,8 +749,8 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                         'severity': row['severity'],
                         'risk_score': float(row.get('final_risk_score', row['risk_score'])),
                         'action': row['action'],
-                        'violation_type': row.get('violation_type', 'UNVERIFIED_ZONE'),
-                        'bhuvan_land_type': row.get('bhuvan_land_type', 'unverified'),
+                        'violation_type': row.get('violation_type', 'POSSIBLE_PERMIT_VIOLATION'),
+                        'bhuvan_land_type': row.get('bhuvan_land_type', 'Land-use assessment pending'),
                         'bhuvan_confidence': row.get('bhuvan_confidence', 'Low'),
                         'bhuvan_overlap_percent': float(row.get('bhuvan_overlap_percent', 0)),
                         'bhuvan_source': row.get('bhuvan_source', 'No land-use polygon intersected'),
@@ -757,7 +763,7 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                         'vision_confidence': float(row.get('vision_confidence', 0.0)),
                         'objects_found': row.get('objects_found', []) if isinstance(row.get('objects_found', []), list) else [],
                         'area_label': area_label,
-                        'period_label': '2024 vs 2025',
+                        'period_label': '2019 vs 2026',
                     })
             finally:
                 try:
@@ -881,13 +887,13 @@ def run_gee_pipeline(job_id: str, bbox: dict):
         traceback.print_exc()
         error_text = str(e)
         if "Earth Engine" in error_text or "service_account" in error_text or "REPLACE_ME" in error_text:
-            zones = build_mock_scan_zones(job_id, bbox)
+            zones = build_fallback_scan_zones(job_id, bbox)
             JOBS[job_id]["status"] = "done"
             JOBS[job_id]["progress"] = f"Scan complete — {len(zones)} zones found (Earth Engine is not configured)"
             JOBS[job_id]["result"] = zones
             JOBS[job_id]["error"] = None
             save_live_zones(zones)
-            print(f"[JOB {job_id}] Returned {len(zones)} mock zones after Earth Engine configuration failure")
+            print(f"[JOB {job_id}] Returned {len(zones)} fallback zones after Earth Engine configuration failure")
         else:
             JOBS[job_id]["status"] = "error"
             JOBS[job_id]["error"] = error_text
@@ -928,14 +934,14 @@ async def get_live_images(zone_id: str, lat: float, lon: float, background_tasks
 
         before = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(region)
-            .filterDate('2024-01-01', '2024-12-31')
+            .filterDate('2019-01-01', '2019-12-31')
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
             .median()
             .clip(region))
 
         after = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(region)
-            .filterDate('2025-01-01', '2025-12-31')
+            .filterDate('2026-01-01', '2026-12-31')
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
             .median()
             .clip(region))

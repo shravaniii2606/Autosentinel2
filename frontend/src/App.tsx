@@ -129,7 +129,7 @@ function getScanSummaryFromZones(zones: Zone[], fallback: Summary | null): Summa
     },
     microsoft_confirmed: zones.filter(z => z.microsoft_confirmed).length,
     area: latest?.area_label || fallback?.area || 'Selected area',
-    period: latest?.period_label || fallback?.period || '2024 vs 2025',
+    period: latest?.period_label || fallback?.period || '2019 vs 2026',
   }
 }
 
@@ -849,7 +849,7 @@ function Dashboard() {
                   </div>
                   <div className="rounded-md border border-slate-100 p-2">
                     <p className="text-[11px] text-slate-500">Confidence</p>
-                    <p className="mt-0.5 font-semibold text-slate-900">{selectedZone.bhuvan_confidence || 'Unknown'}</p>
+                    <p className="mt-0.5 font-semibold text-slate-900">{selectedZone.bhuvan_confidence || 'Assessment pending'}</p>
                   </div>
                 </div>
                 <div className="mt-2 border-t border-slate-100 pt-2">
@@ -1163,16 +1163,16 @@ function Dashboard() {
         <div className="mt-3 space-y-1.5">
           {[
             'Connecting to Google Earth Engine...',
-            'Fetching 2024 satellite imagery...',
-            'Fetching 2025 satellite imagery...',
+            'Fetching 2019 satellite imagery...',
+            'Fetching 2026 satellite imagery...',
             'Running NDBI change detection...',
             'Downloading results from GEE...',
             'Extracting flagged zones...',
           ].map((step, i) => {
             const steps = [
               'Connecting',
-              'Fetching 2024',
-              'Fetching 2025',
+              'Fetching 2019',
+              'Fetching 2026',
               'Running NDBI',
               'Downloading',
               'Extracting',
