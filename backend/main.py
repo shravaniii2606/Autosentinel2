@@ -132,7 +132,7 @@ def enrich_zone_details(zone):
     enriched["osm_flags"] = enriched.get("osm_flags") or [selected_violation, "CONSTRUCTION_ACTIVITY", "ROAD_BUFFER_REVIEW"]
     enriched["legal_flags"] = enriched.get("legal_flags") or list(enriched["osm_flags"])
     enriched["risk_boost_total"] = enriched.get("risk_boost_total") or round(18 + (seed % 18) + 0.5, 1)
-    enriched["legal_explanation"] = enriched.get("legal_explanation") or ""
+    enriched.pop("legal_explanation", None)
     enriched["pre_vision_risk_score"] = enriched.get("pre_vision_risk_score") or enriched.get("risk_score", 75.0)
     enriched["vision_risk_boost"] = enriched.get("vision_risk_boost") or 12.5
     return enriched
@@ -154,7 +154,6 @@ def default_legal_fields():
         'osm_flags': [],
         'legal_flags': [],
         'risk_boost_total': 0.0,
-        'legal_explanation': ''
     }
 
 
@@ -164,6 +163,8 @@ def normalize_zone(zone):
         normalized.setdefault(key, value)
     for key, value in default_legal_fields().items():
         normalized.setdefault(key, value)
+
+    normalized.pop("legal_explanation", None)
 
     normalized["objects_found"] = list(normalized.get("objects_found") or [])
     normalized["vision_confidence"] = float(normalized.get("vision_confidence") or 0.0)
@@ -641,7 +642,6 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                 'osm_flags': [],
                 'legal_flags': [],
                 'risk_boost_total': 0.0,
-                'legal_explanation': '',
                 'microsoft_confirmed': False,
                 'construction_detected': True,
                 'vision_confidence': 0.0,
@@ -705,7 +705,6 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                         'osm_flags': z['osm_flags'],
                         'legal_flags': z['legal_flags'],
                         'risk_boost_total': z['risk_boost_total'],
-                        'legal_explanation': z['legal_explanation'],
                         'microsoft_confirmed': z['microsoft_confirmed'],
                         'construction_detected': z['construction_detected'],
                         'vision_confidence': z['vision_confidence'],
@@ -757,7 +756,6 @@ def run_gee_pipeline(job_id: str, bbox: dict):
                         'osm_flags': _sanitize_obj(row.get('osm_flags', [])) or [],
                         'legal_flags': _sanitize_obj(row.get('legal_flags', [])) or [],
                         'risk_boost_total': float(row.get('risk_boost_total', 0)),
-                        'legal_explanation': row.get('legal_explanation', ''),
                         'microsoft_confirmed': bool(row.get('microsoft_confirmed', False)),
                         'construction_detected': bool(row.get('construction_detected', False)),
                         'vision_confidence': float(row.get('vision_confidence', 0.0)),

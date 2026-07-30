@@ -31,7 +31,6 @@ interface Zone {
   osm_flags?: string[]
   legal_flags?: string[]
   risk_boost_total?: number
-  legal_explanation?: string
   microsoft_confirmed: boolean
   construction_detected?: boolean
   objects_found?: string[]
@@ -856,9 +855,6 @@ function Dashboard() {
                   <p className="text-[11px] text-slate-500">OSM overlays</p>
                   <p className="mt-0.5 break-words font-medium leading-snug text-slate-800">{selectedZone.osm_flags?.map(flag => flag.replace(/_/g, ' ')).join(', ') || 'None'}</p>
                 </div>
-                {selectedZone.legal_explanation && (
-                  <p className="mt-2 border-t border-slate-100 pt-2 leading-relaxed text-slate-600">{selectedZone.legal_explanation}</p>
-                )}
               </div>
               {/* Details */}
               <div className="space-y-1.5 text-xs text-slate-500">
