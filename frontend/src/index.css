@@ -1,1 +1,51 @@
 @import "tailwindcss";
+
+.feature-marquee {
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-track {
+  display: flex;
+  width: max-content;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.feature-track > * {
+  flex: 0 0 auto;
+  width: min(320px, calc(100vw - 4rem));
+}
+
+.feature-track--left {
+  animation: feature-scroll-left 38s linear infinite;
+}
+
+.feature-track--right {
+  animation: feature-scroll-right 38s linear infinite;
+}
+
+.feature-card {
+  will-change: transform;
+}
+
+.feature-marquee:hover .feature-track {
+  animation-play-state: paused;
+}
+
+@keyframes feature-scroll-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes feature-scroll-right {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-track--left,
+  .feature-track--right {
+    animation: none;
+  }
+}
