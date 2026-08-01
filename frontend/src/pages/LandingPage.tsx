@@ -59,11 +59,11 @@ export default function LandingPage() {
       <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#07100f]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-3 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
           <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home">
-            <img src="/autosentinel-logo.svg" alt="" className="h-14 w-14" />
+            <img src="/autosentinel-logo.png" alt="" className="h-14 w-14 object-contain" />
             <span className="text-xl font-extrabold tracking-[0.1em] text-white sm:text-2xl" style={{ fontFamily: "Aptos, 'Segoe UI', sans-serif" }}>AUTOSENTINEL</span>
           </a>
           <nav className="flex flex-wrap justify-center gap-2" aria-label="Landing page navigation" style={{ fontFamily: "Aptos, 'Segoe UI', sans-serif" }}>
-            <a href="/dashboard" className="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-amber-300/60 hover:bg-amber-300/15">Dashboard</a>
+            <a href="/login" className="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-amber-300/60 hover:bg-amber-300/15">Dashboard</a>
             <button type="button" onClick={() => setShowDemo(true)} className="cursor-pointer rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-amber-300/60 hover:bg-amber-300/15">Demo</button>
             <button type="button" onClick={() => document.getElementById('workflow')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="cursor-pointer rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-sky-300/60 hover:bg-sky-300/15">Workflow</button>
             <button type="button" onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="cursor-pointer rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-violet-300/60 hover:bg-violet-300/15">Features</button>
@@ -85,7 +85,7 @@ export default function LandingPage() {
         We find them first.
       </p>
       <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-        <a href="/dashboard" className="inline-flex justify-center rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 transition-all duration-200 ease-out hover:bg-amber-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/20 active:translate-y-0 active:scale-[0.98]">
+        <a href="/login" className="inline-flex justify-center rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 transition-all duration-200 ease-out hover:bg-amber-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/20 active:translate-y-0 active:scale-[0.98]">
           SCAN AN AREA
         </a>
   <button
@@ -152,7 +152,7 @@ export default function LandingPage() {
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1.65fr)_repeat(3,minmax(130px,.55fr))]">
             <div className="max-w-md">
               <a href="/" className="inline-flex items-center gap-3" aria-label="AutoSentinel home">
-                <img src="/autosentinel-logo.svg" alt="" className="h-13 w-13" />
+                <img src="/autosentinel-logo.png" alt="" className="h-13 w-13 object-contain" />
                 <span className="text-xl font-extrabold tracking-[0.1em] text-white">AUTOSENTINEL</span>
               </a>
               <p className="mt-5 text-base leading-7 text-slate-400">Turn satellite imagery into clear, evidence-backed construction intelligence for land authorities and inspection teams.</p>
@@ -171,7 +171,7 @@ export default function LandingPage() {
               <nav className="mt-5 flex flex-col gap-4 text-base text-slate-300">
                 <a href="#features" className="transition hover:text-amber-300">Features</a>
                 <a href="#workflow" className="transition hover:text-amber-300">How it works</a>
-                <a href="/dashboard" className="transition hover:text-amber-300">Open dashboard</a>
+                <a href="/login" className="transition hover:text-amber-300">Open dashboard</a>
               </nav>
             </div>
 
