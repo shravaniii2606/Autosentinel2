@@ -6,6 +6,7 @@ import axios from 'axios'
 import AssistantPanel from './AssistantPanel'
 import { API_BASE_URL } from './config'
 import LandingPage from './pages/LandingPage'
+import LoginPage, { isAuthenticated } from './pages/LoginPage'
 import { formatViolationType } from './utils/violationLabel'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-draw/dist/leaflet.draw.css'
@@ -643,7 +644,7 @@ function Dashboard() {
           <div className="flex items-center gap-2 mb-1">
             
             <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home"></a>
-           <img src="/autosentinel-logo.svg" alt="" className="h-10 w-10" />
+           <img src="/autosentinel-logo.png" alt="" className="h-10 w-10 object-contain" />
             <h1 className="text-lg font-bold text-white">AutoSentinel</h1>
           </div>
         </div>
@@ -1398,5 +1399,7 @@ function Dashboard() {
   }
 
 export default function App() {
-  return window.location.pathname === '/' ? <LandingPage /> : <Dashboard />
+  if (window.location.pathname === '/') return <LandingPage />
+  if (window.location.pathname === '/login') return <LoginPage />
+  return isAuthenticated() ? <Dashboard /> : <LoginPage />
 }
