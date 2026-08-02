@@ -1125,39 +1125,50 @@ function Dashboard() {
   Get Data
 </button>
           </div>
-          {/* Scan progress overlay */}
+        </div>
+
+        {/* Scan progress overlay */}
 {(scanStatus.active || scanStatus.progress) && (
-  <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-[1200] min-w-80">
-    <div className={`rounded-xl px-5 py-4 shadow-2xl border ${
+  <div className="absolute right-4 top-4 z-[1200] w-[min(22rem,calc(100%-2rem))]">
+    <div className={`relative overflow-hidden rounded-2xl border p-4 shadow-[0_20px_55px_rgba(15,23,42,0.32)] backdrop-blur-md ${
       scanStatus.active
-        ? 'bg-sky-50/95 border-blue-500/50'
+        ? 'border-cyan-200/70 bg-slate-950/95'
         : scanStatus.progress.startsWith('Complete')
-        ? 'bg-sky-50/95 border-green-500/50'
-        : 'bg-sky-50/95 border-red-500/50'
+        ? 'border-emerald-300/70 bg-slate-950/95'
+        : 'border-rose-300/70 bg-slate-950/95'
     }`}>
-      <div className="flex items-center gap-3">
-        {scanStatus.active ? (
-          <div className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0" />
-        ) : scanStatus.progress.startsWith('Complete') ? (
-          <div className="w-4 h-4 rounded-full bg-green-500 flex-shrink-0" />
-        ) : (
-          <div className="w-4 h-4 rounded-full bg-red-500 flex-shrink-0" />
-        )}
-        <div>
-          <p className={`text-sm font-medium ${
-            scanStatus.active ? 'text-blue-600'
-            : scanStatus.progress.startsWith('Complete') ? 'text-green-600'
-            : 'text-red-600'
-          }`}>
-            {scanStatus.active ? 'Live Satellite Scan Running' : scanStatus.progress.startsWith('Complete') ? 'Scan Complete' : 'Scan Failed'}
+      <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full border border-cyan-300/20" />
+      <div className="pointer-events-none absolute -right-4 -top-8 h-24 w-24 rounded-full border border-cyan-300/15" />
+      <div className="pointer-events-none absolute right-12 top-7 h-1 w-1 rounded-full bg-cyan-100 shadow-[0_0_10px_3px_rgba(165,243,252,0.7)]" />
+      <div className="pointer-events-none absolute right-20 top-16 h-1 w-1 rounded-full bg-white/80" />
+
+      <div className="relative flex items-start gap-3">
+        <div className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border text-xl shadow-lg ${
+          scanStatus.active ? 'border-cyan-300/40 bg-cyan-400/15 shadow-cyan-500/15' : scanStatus.progress.startsWith('Complete') ? 'border-emerald-300/40 bg-emerald-400/15' : 'border-rose-300/40 bg-rose-400/15'
+        }`}>
+          <span className={scanStatus.active ? 'animate-bounce' : ''} role="img" aria-label="rocket">&#128640;</span>
+          {scanStatus.active && <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-slate-950 bg-cyan-400 animate-pulse" />}
+        </div>
+        <div className="min-w-0 flex-1 pr-5">
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${scanStatus.active ? 'bg-cyan-400 animate-pulse' : scanStatus.progress.startsWith('Complete') ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">AutoSentinel mission</p>
+          </div>
+          <p className="mt-1 text-sm font-bold text-white">
+            {scanStatus.active ? 'Live satellite scan' : scanStatus.progress.startsWith('Complete') ? 'Scan complete' : 'Scan needs attention'}
           </p>
-          <p className="text-xs text-slate-500 mt-0.5">{scanStatus.progress}</p>
+          <p className="mt-1 truncate text-xs text-slate-300">{scanStatus.progress}</p>
         </div>
       </div>
 
-      {/* Progress steps */}
       {scanStatus.active && (
-        <div className="mt-3 space-y-1.5">
+        <>
+          <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-slate-700">
+            <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-violet-400 transition-all duration-700" style={{ width: `${Math.max(8, (([
+              'Connecting', 'Fetching 2019', 'Fetching 2026', 'Running NDBI', 'Downloading', 'Extracting'
+            ].findIndex(s => scanStatus.progress.includes(s)) + 1) / 6) * 100)}%` }} />
+          </div>
+          <div className="relative mt-4 space-y-2.5">
           {[
             'Connecting to Google Earth Engine...',
             'Fetching 2019 satellite imagery...',
@@ -1174,31 +1185,34 @@ function Dashboard() {
               'Downloading',
               'Extracting',
             ]
-            const currentIdx = steps.findIndex(s => scanStatus.progress.includes(s))
+            const currentIdx = Math.max(0, steps.findIndex(s => scanStatus.progress.includes(s)))
             const done = currentIdx > i
             const active = currentIdx === i
 
             return (
-              <div key={i} className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  done ? 'bg-green-500'
-                  : active ? 'bg-blue-400 animate-pulse'
-                  : 'bg-slate-300'
+              <div key={i} className="flex items-center gap-2.5">
+                <div className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border text-[9px] font-bold ${
+                  done ? 'border-emerald-400 bg-emerald-400 text-slate-950'
+                  : active ? 'border-cyan-300 bg-cyan-400/20 text-cyan-200 animate-pulse'
+                  : 'border-slate-600 bg-slate-800 text-slate-500'
                 }`} />
                 <p className={`text-xs ${
-                  done ? 'text-green-600'
-                  : active ? 'text-blue-600'
+                  done ? 'text-emerald-300'
+                  : active ? 'font-medium text-cyan-100'
                   : 'text-slate-500'
                 }`}>{step}</p>
               </div>
             )
           })}
-        </div>
+          </div>
+          <div className="relative mt-4 flex items-center justify-between border-t border-slate-700/70 pt-3 text-[10px] font-medium uppercase tracking-[0.13em] text-slate-400">
+            <span>Earth Engine link</span><span className="text-cyan-300">Telemetry live</span>
+          </div>
+        </>
       )}
     </div>
   </div>
 )}
-        </div>
       </div>
     </div>
   )
