@@ -1165,8 +1165,9 @@ function Dashboard() {
         <>
           <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-slate-700">
             <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-sky-400 to-violet-400 transition-all duration-700" style={{ width: `${Math.max(8, (([
-              'Connecting', 'Fetching 2019', 'Fetching 2026', 'Running NDBI', 'Downloading', 'Extracting'
-            ].findIndex(s => scanStatus.progress.includes(s)) + 1) / 6) * 100)}%` }} />
+              'Connecting', 'Fetching 2019', 'Fetching 2026', 'Running NDBI', 'Downloading', 'Extracting',
+              'Generating Bhuvan', 'Exporting OSM', 'Applying Bhuvan'
+            ].findIndex(s => scanStatus.progress.includes(s)) + 1) / 9) * 100)}%` }} />
           </div>
           <div className="relative mt-4 space-y-2.5">
           {[
@@ -1176,6 +1177,9 @@ function Dashboard() {
             'Running NDBI change detection...',
             'Downloading results from GEE...',
             'Extracting flagged zones...',
+            'Generating Bhuvan land-use layer...',
+            'Exporting OSM infrastructure layers...',
+            'Applying Bhuvan and OSM legal scoring...',
           ].map((step, i) => {
             const steps = [
               'Connecting',
@@ -1184,6 +1188,9 @@ function Dashboard() {
               'Running NDBI',
               'Downloading',
               'Extracting',
+              'Generating Bhuvan',
+              'Exporting OSM',
+              'Applying Bhuvan',
             ]
             const currentIdx = Math.max(0, steps.findIndex(s => scanStatus.progress.includes(s)))
             const done = currentIdx > i
