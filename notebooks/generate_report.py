@@ -11,7 +11,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, HRFlowable, PageBreak
+from reportlab.platypus.tableofcontents import TableOfContents
 from reportlab.lib.units import cm
 
 
@@ -27,6 +28,9 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         topMargin=1.8 * cm, bottomMargin=1.6 * cm,
         leftMargin=2 * cm, rightMargin=2 * cm)
     story = []
+
+    def safe_path(path):
+        return path if path and os.path.exists(path) else None
 
     def display(value):
         """Convert report values into safe, readable table text."""
@@ -125,20 +129,64 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
     else:
         before_year, after_year = '2019', '2026'
 
+    logo_path = safe_path(zone.get('logo_path') or os.path.join(BASE_DIR, 'data', 'autosentinel-logo.png'))
+    reverse_geocode = zone.get('reverse_geocode') or zone.get('ward_name') or zone.get('locality') or zone.get('road_name') or 'Not available'
+    ward_name = zone.get('ward_name') or zone.get('locality') or 'Not available'
+    road_name = zone.get('road_name') or 'Not available'
+    human_verification_status = str(zone.get('human_verification_status') or 'Pending').title()
+    geojson_url = zone.get('geojson_url')
+    timeline_images = zone.get('timeline_images') or []
+    ndbi_heatmap_path = safe_path(zone.get('ndbi_heatmap_path'))
+    zoomed_tile_path = safe_path(zone.get('zoomed_tile_path'))
+    osm_thumb_path = safe_path(zone.get('osm_thumb_path'))
+    detection_history = zone.get('detection_history') or []
+    ward_stats = zone.get('ward_stats') or {}
+
+    toc = TableOfContents()
+    toc.levelStyles = [
+        ParagraphStyle('toc_level0', fontSize=9, leftIndent=10, leading=12),
+        ParagraphStyle('toc_level1', fontSize=8, leftIndent=20, leading=10),
+    ]
+
+    def add_page_number(canvas, doc):
+        page_num = canvas.getPageNumber()
+        footer_text = f"AutoSentinel premium report — page {page_num}"
+        canvas.saveState()
+        canvas.setFont('Helvetica', 8)
+        canvas.setFillColor(colors.HexColor('#6B7280'))
+        canvas.drawString(2 * cm, 1 * cm, footer_text)
+        canvas.restoreState()
+
+    def after_flowable(flowable):
+        if isinstance(flowable, Paragraph) and flowable.style.name == 'report_section':
+            toc.addEntry(0, flowable.getPlainText(), doc.page)
+
+    doc.afterFlowable = after_flowable
+
     story.append(Paragraph('AutoSentinel', title_style))
-    story.append(Paragraph('Unauthorized Construction Detection Report', sub_style))
+    story.append(Paragraph('Premium Unauthorized Construction Detection Report', sub_style))
     story.append(Paragraph(
         f"Generated: {datetime.now().strftime('%d %B %Y, %H:%M IST')}  |  Analysis period: {before_year}–{after_year}",
         meta_style))
     story.append(Paragraph(f"Area analysed: {display(area_label)}", meta_style))
+    if reverse_geocode != 'Not available':
+        story.append(Paragraph(f"Location context: {display(reverse_geocode)}", meta_style))
+    story.append(Spacer(1, 0.4 * cm))
+    if logo_path:
+        try:
+            story.append(RLImage(logo_path, width=4 * cm, height=4 * cm))
+        except Exception:
+            pass
     story.append(HRFlowable(width='100%', thickness=1, color=colors.HexColor('#CBD5E1'), spaceBefore=5, spaceAfter=12))
+    story.append(Paragraph('Table of contents', section_style))
+    story.append(toc)
+    story.append(PageBreak())
 
+    story.append(Paragraph('Zone Details', section_style))
     sev_style = ParagraphStyle('sev', fontSize=16, fontName='Helvetica-Bold',
         textColor=colors.HexColor(severity_hex.get(sev, '#006600')), spaceAfter=4)
     story.append(Paragraph(f'Severity: {sev}  |  Risk Score: {score}/100', sev_style))
     story.append(Spacer(1, 0.3 * cm))
-
-    story.append(Paragraph('Zone Details', section_style))
 
     details_data = [
         ['Field', 'Value'],
@@ -155,6 +203,13 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         ['Legal Flags', ', '.join(flag.replace('_', ' ') for flag in zone.get('legal_flags', [])) or 'None'],
         ['Risk Boost', f"{zone.get('risk_boost_total', 0):.1f}"],
     ]
+    if reverse_geocode and reverse_geocode != 'Not available':
+        details_data.insert(3, ['Geocoded locality', reverse_geocode])
+    if road_name and road_name != 'Not available':
+        insert_index = 4 if reverse_geocode and reverse_geocode != 'Not available' else 3
+        details_data.insert(insert_index, ['Nearest road', road_name])
+    if zone.get('human_verification_status'):
+        details_data.insert(len(details_data) - 4, ['Human verification status', human_verification_status])
 
     story.append(report_table(details_data, [4.8 * cm, 12.2 * cm]))
     story.append(Spacer(1, 0.5 * cm))
@@ -237,7 +292,44 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
     story.append(HRFlowable(width='100%', thickness=0.5, color=colors.HexColor('#DDDDDD'), spaceAfter=8))
     story.append(Paragraph('Satellite Evidence', section_style))
 
-    if os.path.exists(before_path) and os.path.exists(after_path):
+    if timeline_images:
+        story.append(Paragraph(
+            'The timeline below presents intermediate Sentinel-2 imagery for the flagged zone. '
+            'This expanded view helps confirm when construction-related land cover change first became visible.',
+            ParagraphStyle('body', fontSize=9, textColor=colors.HexColor('#555555'), leading=14, spaceAfter=8)))
+
+        image_cells = []
+        label_style = ParagraphStyle('label', fontSize=8, alignment=1,
+            textColor=colors.HexColor('#666666'))
+        row = []
+        label_row = []
+        for image_info in timeline_images[:4]:
+            image_path = safe_path(image_info.get('path'))
+            if image_path:
+                row.append(RLImage(image_path, width=6 * cm, height=6 * cm))
+            else:
+                row.append(Paragraph('Image not available', label_style))
+            label_row.append(Paragraph(str(image_info.get('label') or image_info.get('year') or 'Unknown'), label_style))
+            if len(row) == 2:
+                image_cells.append(row)
+                image_cells.append(label_row)
+                row = []
+                label_row = []
+        if row:
+            while len(row) < 2:
+                row.append('')
+                label_row.append('')
+            image_cells.append(row)
+            image_cells.append(label_row)
+        img_table = Table(image_cells, colWidths=[8.1 * cm, 8.1 * cm])
+        img_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('PADDING', (0, 0), (-1, -1), 4),
+        ]))
+        story.append(img_table)
+
+    elif os.path.exists(before_path) and os.path.exists(after_path):
         story.append(Paragraph(
             f'The images below show the flagged location in {before_year} (before) and {after_year} (after). '
             'Visible change in land cover - new grey/brown built-up area replacing green or open land - '
@@ -265,9 +357,24 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
     else:
         story.append(Paragraph(
             'Satellite image crops are not available for this zone. '
-            'Images are pre-generated for Critical severity zones only. '
             'Use the AutoSentinel dashboard to view live satellite thumbnails for this location.',
             ParagraphStyle('body', fontSize=9, textColor=colors.HexColor('#888888'), leading=14)))
+
+    if ndbi_heatmap_path:
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(Paragraph('NDBI Change Heatmap', ParagraphStyle('subsection', fontSize=11, leading=14, fontName='Helvetica-Bold', spaceAfter=6)))
+        story.append(Paragraph(
+            'The heatmap below represents the change in NDBI over the analysis window. Hotter colors indicate a stronger built-up index increase.',
+            ParagraphStyle('body', fontSize=9, textColor=colors.HexColor('#555555'), leading=14, spaceAfter=8)))
+        story.append(RLImage(ndbi_heatmap_path, width=16 * cm, height=8 * cm))
+
+    if zoomed_tile_path:
+        story.append(Spacer(1, 0.3 * cm))
+        story.append(Paragraph('High-resolution zoomed tile', ParagraphStyle('subsection', fontSize=11, leading=14, fontName='Helvetica-Bold', spaceAfter=6)))
+        story.append(Paragraph(
+            'A zoomed-in high-resolution tile centered on the flagged zone centroid provides print-quality spatial detail for the location.',
+            ParagraphStyle('body', fontSize=9, textColor=colors.HexColor('#555555'), leading=14, spaceAfter=8)))
+        story.append(RLImage(zoomed_tile_path, width=16 * cm, height=8 * cm))
 
     story.append(Spacer(1, 0.5 * cm))
 
@@ -281,7 +388,7 @@ def generate_report(zone, output_path=None, before_path=None, after_path=None):
         'ground verification.',
         ParagraphStyle('disclaimer', fontSize=7, textColor=colors.HexColor('#999999'), leading=11)))
 
-    doc.build(story)
+    doc.multiBuild(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
     print(f'Report saved: {output_path}')
 
 
