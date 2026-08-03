@@ -6,7 +6,7 @@ import uuid
 import threading
 import importlib.util
 import numpy as np
-from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -50,9 +50,16 @@ try:
 except Exception:
     _supa_upsert = None
     _supa_fetch = None
-    _supabase_available = False
+try:
+    from backend.auth_routes import router as auth_router, get_current_user
+    from backend.models import User, RefreshToken, Zone
+except ImportError:
+    from auth_routes import router as auth_router, get_current_user
+    from models import User, RefreshToken, Zone
 
 app = FastAPI()
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -438,10 +445,10 @@ async def scan_area(request: Request, background_tasks: BackgroundTasks):
 def get_scan_job(job_id: str):
     return get_job(job_id)
 
-# ─── Supabase admin endpoints ───────────────────────────────────────────────
+# ─── Admin endpoints (Protected) ───────────────────────────────────────────────
 
 @app.post("/admin/sync-flagged-to-supabase")
-def sync_flagged_zones():
+def sync_flagged_zones(current_user: User = Depends(get_current_user)):
     """One-time / repeatable: push the precomputed flagged_zones.json into PostgreSQL.
 
     The endpoint name is preserved for backwards compatibility.
@@ -469,7 +476,7 @@ def sync_flagged_zones():
 
 
 @app.post("/admin/sync-to-db")
-def sync_all_to_db():
+def sync_all_to_db(current_user: User = Depends(get_current_user)):
     """Seed / refresh both flagged and live zones in PostgreSQL from in-memory state."""
     results = {}
     try:
@@ -487,7 +494,7 @@ def sync_all_to_db():
 
 
 @app.get("/admin/zones-from-supabase")
-def zones_from_supabase(source: str = None):
+def zones_from_supabase(source: str = None, current_user: User = Depends(get_current_user)):
     """Read zones from PostgreSQL (primary) and optionally from Supabase (legacy).
 
     Endpoint name preserved for backwards compatibility.
@@ -500,7 +507,7 @@ def zones_from_supabase(source: str = None):
 
 
 @app.get("/admin/db-health")
-def db_health():
+def db_health(current_user: User = Depends(get_current_user)):
     """Check PostgreSQL connectivity and zone counts."""
     try:
         flagged_count = len(fetch_zones(source="flagged", limit=10_000))

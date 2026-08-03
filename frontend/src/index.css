@@ -61,6 +61,7 @@
 .login-copy h1 em { color: #fbbf24; font-weight: 500; }
 .login-copy > p:last-child { max-width: 29rem; color: #a9bab6; font-size: 1rem; line-height: 1.6; }
 .login-form { position: relative; align-self: center; display: grid; gap: .6rem; width: min(100%, 29rem); margin-top: 2.5rem; }
+.login-form form { display: grid; gap: .4rem; width: 100%; }
 .login-form label { color: #d8e4e1; font-size: .74rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
 .login-form input { height: 3.25rem; margin-bottom: .8rem; border: 1px solid rgba(255,255,255,.16); border-radius: .5rem; outline: none; background: rgba(255,255,255,.055); padding: 0 1rem; color: white; font: inherit; transition: .2s ease; }
 .login-form input::placeholder { color: #72837f; }
@@ -80,3 +81,16 @@
 .login-video-caption p { margin: 0 0 .65rem; color: #fef3c7; }
 .login-video-caption span { color: white; font-family: Georgia, serif; font-size: clamp(1.4rem, 2.6vw, 2.5rem); font-style: italic; line-height: 1.05; }
 @media (max-width: 760px) { .login-page { grid-template-columns: 1fr; padding: 0; } .login-video-panel { display: none; } .login-panel { min-height: 100svh; border-radius: 0; padding: 2rem 1.5rem; } .login-copy { margin-top: 2.5rem; padding-top: 0; } .login-footer { margin-top: 3rem; } }
+
+.login-mode-toggle { display: flex; gap: 0.5rem; background: rgba(255, 255, 255, 0.05); padding: 0.25rem; border-radius: 0.5rem; border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 0.8rem; }
+.login-mode-btn { flex: 1; padding: 0.6rem; border: 0; background: transparent; color: #a9bab6; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em; border-radius: 0.35rem; cursor: pointer; transition: all 0.2s ease; }
+.login-mode-btn.active { background: rgba(251, 191, 36, 0.18); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.35); }
+.login-divider { display: flex; align-items: center; text-align: center; color: #637570; font-size: 0.7rem; font-weight: 700; margin: 0.8rem 0; letter-spacing: 0.1em; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.login-divider span { padding: 0 0.75rem; }
+.google-btn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; min-height: 3.2rem; border-radius: 0.5rem; border: 1px solid rgba(255, 255, 255, 0.18) !important; background: rgba(255, 255, 255, 0.08) !important; color: white !important; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; margin-top: 0 !important; }
+.google-btn:hover { background: rgba(255, 255, 255, 0.15) !important; border-color: rgba(255, 255, 255, 0.35) !important; transform: translateY(-2px) !important; box-shadow: none !important; }
+.google-btn svg { width: 1.25rem; height: 1.25rem; }
+.login-toggle-text { margin-top: 1rem; text-align: center; color: #a9bab6; font-size: 0.82rem; }
+.login-toggle-link { color: #fbbf24 !important; font-weight: 700; cursor: pointer; text-decoration: underline; background: transparent !important; border: none !important; padding: 0 0.25rem !important; font: inherit !important; min-height: auto !important; margin: 0 !important; transform: none !important; box-shadow: none !important; }
+.login-toggle-link:hover { color: #fff0b1 !important; transform: none !important; background: transparent !important; box-shadow: none !important; }
