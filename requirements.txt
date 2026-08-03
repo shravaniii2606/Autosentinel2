@@ -13,3 +13,7 @@ pyogrio>=0.7
 supabase
 mem0aiok
 openai
+# ── PostgreSQL persistence (added 2026-08-03) ──
+sqlalchemy>=2.0
+psycopg2-binary
+alembic
