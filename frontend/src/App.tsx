@@ -54,6 +54,13 @@ interface YoloBox {
   y2: number
 }
 
+interface PlaceResult {
+  place_id: string | number
+  display_name: string
+  lat: string
+  lon: string
+}
+
 interface Summary {
   total: number
   severity_breakdown: {
@@ -530,8 +537,11 @@ function Dashboard() {
     jobId: string | null
   }>({ active: false, progress: '', jobId: null })
   const [mapInstance, setMapInstance] = useState<any>(null)
-  const [coordinateLat, setCoordinateLat] = useState<string>('')
-  const [coordinateLng, setCoordinateLng] = useState<string>('')
+  const [placeQuery, setPlaceQuery] = useState<string>('')
+  const [placeResults, setPlaceResults] = useState<PlaceResult[]>([])
+  const [placeLoading, setPlaceLoading] = useState<boolean>(false)
+  const [placeError, setPlaceError] = useState<string>('')
+  const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null)
   const [reportStatus, setReportStatus] = useState<string>('')
 
   const liveSummary = {
@@ -617,12 +627,9 @@ function Dashboard() {
     }
   }
 
-  const flyToCoordinates = () => {
-    const lat = Number(coordinateLat)
-    const lng = Number(coordinateLng)
-
+  const flyToLatLng = (lat: number, lng: number, label?: string) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      alert('Please enter valid latitude and longitude values.')
+      alert('Invalid location coordinates.')
       return
     }
     if (!mapInstance) return
@@ -631,7 +638,50 @@ function Dashboard() {
     setSelectedZone(null)
     setCircleCenter(null)
     setCircleRadius(null)
+
+    if (label) {
+      setSelectedPlace(prev => ({
+        place_id: typeof prev?.place_id !== 'undefined' ? prev.place_id : `${lat}:${lng}`,
+        display_name: label,
+        lat: String(lat),
+        lon: String(lng)
+      }))
+    }
   }
+
+  useEffect(() => {
+    if (!placeQuery.trim()) {
+      setPlaceResults([])
+      setPlaceError('')
+      return
+    }
+
+    const timer = window.setTimeout(async () => {
+      setPlaceLoading(true)
+      setPlaceError('')
+      try {
+        const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+          params: {
+            format: 'jsonv2',
+            addressdetails: 1,
+            limit: 6,
+            q: placeQuery
+          },
+          headers: {
+            'Accept-Language': 'en'
+          }
+        })
+        setPlaceResults(response.data || [])
+      } catch (error) {
+        setPlaceResults([])
+        setPlaceError('Unable to fetch place suggestions. Please try again.')
+      } finally {
+        setPlaceLoading(false)
+      }
+    }, 300)
+
+    return () => window.clearTimeout(timer)
+  }, [placeQuery, mapInstance])
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0a0a0a] text-neutral-100">
@@ -685,39 +735,82 @@ function Dashboard() {
 
 
 
-        {/* Coordinate jump */}
+        {/* Search place */}
         <div className="border-b border-white/10 p-4">
-          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">GO TO COORDINATES</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              value={coordinateLat}
-              onChange={e => setCoordinateLat(e.target.value)}
-              placeholder="Latitude"
-              className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
-            />
-            <input
-              type="text"
-              value={coordinateLng}
-              onChange={e => setCoordinateLng(e.target.value)}
-              placeholder="Longitude"
-              className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
-            />
+          <p className="mb-2 text-xs font-medium tracking-wider text-neutral-400">SEARCH PLACE</p>
+          <input
+            type="text"
+            value={placeQuery}
+            onChange={e => {
+              setPlaceQuery(e.target.value)
+              setSelectedPlace(null)
+            }}
+            placeholder="Search for a place or address"
+            className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
+          />
+          <div className="mt-3 space-y-2">
+            {placeLoading && (
+              <div className="rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs text-neutral-400">
+                Searching for places...
+              </div>
+            )}
+            {!placeLoading && placeError && (
+              <div className="rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs text-rose-300">
+                {placeError}
+              </div>
+            )}
+            {!placeLoading && placeQuery.trim() && placeResults.length === 0 && !placeError && (
+              <div className="rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs text-neutral-400">
+                No places found for "{placeQuery}".
+              </div>
+            )}
+            {placeResults.length > 0 && (
+              <div className="space-y-2">
+                {placeResults.map(result => (
+                  <button
+                    key={result.place_id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlace(result)
+                      flyToLatLng(Number(result.lat), Number(result.lon), result.display_name)
+                    }}
+                    className="w-full text-left rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-xs text-white transition-all duration-150 ease-out hover:border-amber-400/50 hover:bg-neutral-800"
+                  >
+                    <div className="font-semibold text-white truncate">{result.display_name}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <button
-            onClick={flyToCoordinates}
-            className="mt-3 w-full rounded-xl bg-amber-400 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-black transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/10 active:scale-[0.98]"
-          >
-            Center map
-          </button>
+          {selectedPlace && (
+            <div className="mt-3 rounded-xl border border-white/10 bg-neutral-900 px-3 py-3 text-xs text-neutral-300">
+              <div className="font-semibold text-white truncate">Selected: {selectedPlace.display_name}</div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => flyToLatLng(Number(selectedPlace.lat), Number(selectedPlace.lon))}
+                  className="w-full rounded-xl bg-amber-400 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-black transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-400/10 active:scale-[0.98]"
+                >
+                  Center map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPlace(null)
+                    setPlaceQuery('')
+                    setPlaceResults([])
+                  }}
+                  className="w-full rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 active:scale-[0.98]"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
           {selectedZone && (
             <button
-              onClick={() => {
-                setCoordinateLat(String(selectedZone.lat))
-                setCoordinateLng(String(selectedZone.lon))
-                setTimeout(flyToCoordinates, 0)
-              }}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 active:scale-[0.98]"
+              onClick={() => flyToLatLng(selectedZone.lat, selectedZone.lon, selectedZone.location_name)}
+              className="mt-3 w-full rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-white transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-white/5 active:scale-[0.98]"
             >
               Use selected zone coordinates
             </button>
