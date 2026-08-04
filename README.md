@@ -45,9 +45,8 @@ YOLO for vision-based construction detection on satellite thumbnails.
 
 **Data & AI** — Google Earth Engine (Sentinel-2 imagery), OpenStreetMap
 (land-use + natural feature layers via Overpass/OSMnx), Microsoft Building
-Footprints (structure verification), Supabase (zone persistence), mem0
-(officer memory), Alchemyst AI (context-aware reasoning + chat), Gnani.ai
-(voice input/output).
+Footprints (structure verification), Supabase (zone persistence), OpenRouter
+for OpenAI-compatible assistant chat, and Gnani.ai (voice input/output).
 
 ## Project structure
 
@@ -57,9 +56,7 @@ autosentinel/
 │   ├── main.py               # FastAPI app — all API endpoints
 │   ├── gee_auth.py           # Earth Engine authentication (service account or local OAuth)
 │   ├── supabase_client.py    # Zone persistence in Supabase
-│   ├── ai_assistant.py       # Orchestrates the AI assistant pipeline
-│   ├── mem0_client.py        # Officer memory (mem0)
-│   ├── alchemyst_client.py   # Context store + LLM chat (Alchemyst AI)
+│   ├── assistant.py          # OpenRouter-backed AI assistant helpers
 │   ├── gnani_client.py       # Voice input/output (Gnani.ai)
 │   └── requirements.txt
 ├── frontend/
@@ -99,7 +96,7 @@ pip install -r requirements.txt
 ```
 
 Copy `.env.example` to `.env` and fill in your credentials (Earth Engine,
-Supabase, mem0, Alchemyst AI, Gnani.ai):
+Supabase, OpenRouter, Gnani.ai):
 
 ```bash
 cp .env.example .env

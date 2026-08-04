@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, WMSTileLayer, CircleMarker, Popup, Circle, use
 import L from 'leaflet'
 import axios from 'axios'
 import AssistantPanel from './AssistantPanel'
+import ZoneChatbot from './ZoneChatbot'
 import { API_BASE_URL } from './config'
 import LandingPage from './pages/LandingPage'
 import LoginPage, { isAuthenticated } from './pages/LoginPage'
@@ -985,6 +986,7 @@ function Dashboard() {
   )}
               {/* Before/After slider */}
 <ZoneImages zoneId={selectedZone.id} lat={selectedZone.lat} lon={selectedZone.lon} />
+<ZoneChatbot zoneId={selectedZone.id} />
             </div>
           </div>
         )}

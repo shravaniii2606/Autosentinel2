@@ -29,12 +29,16 @@ except ImportError:
 load_backend_env()
 
 try:
-    from backend.assistant import answer_officer_query
+    try:
+        from backend.assistant import answer_officer_query, answer_zone_query
+    except ImportError:
+        from assistant import answer_officer_query, answer_zone_query
     assistant_import_error = None
 except Exception as exc:
     # The map API must remain available when the optional AI-assistant SDKs or
     # credentials have not been configured on a local development machine.
     answer_officer_query = None
+    answer_zone_query = None
     assistant_import_error = str(exc)
 
 # PostgreSQL is the primary persistence backend.
@@ -83,6 +87,27 @@ async def assistant_query(request: Request):
     body = await request.json()
     answer = answer_officer_query(body["text"], body.get("officer_id", "default_officer"))
     return {"answer": answer}
+
+
+@app.post("/assistant/zone-query")
+async def assistant_zone_query(request: Request):
+    body = await request.json()
+    if "zone_id" not in body or body["zone_id"] is None or body["zone_id"] == "":
+        raise HTTPException(status_code=400, detail="zone_id is required")
+
+    zone_id = body["zone_id"]
+    zone = find_zone(zone_id)
+    if zone is None:
+        raise HTTPException(status_code=404, detail="Zone not found")
+
+    if answer_zone_query is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI assistant is not configured: {assistant_import_error}"
+        )
+
+    answer = answer_zone_query(zone, body.get("text", ""))
+    return {"answer": answer, "zone_id": zone_id}
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), '..', 'data', 'flagged_zones.json')
 

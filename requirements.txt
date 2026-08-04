@@ -11,7 +11,6 @@ geopandas>=1.0
 pyproj>=3.5
 pyogrio>=0.7
 supabase
-mem0aiok
 openai
 # ── PostgreSQL persistence (added 2026-08-03) ──
 sqlalchemy>=2.0
