@@ -694,9 +694,9 @@ function Dashboard() {
         <div className="border-b border-white/10 p-5">
           <div className="flex items-center gap-2 mb-1">
             
-            <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home"></a>
-           <img src="/autosentinel-logo.png" alt="" className="h-10 w-10 object-contain" />
-            <h1 className="text-lg font-bold text-white">AutoSentinel</h1>
+            <a href="/" className="flex items-center gap-3" aria-label="Nirikshan home"></a>
+           <img src="/nirikshan-logo.png" alt="Nirikshan logo" className="h-10 w-10 object-contain" />
+            <h1 className="text-lg font-bold text-white">NIRIKSHAN</h1>
           </div>
         </div>
 

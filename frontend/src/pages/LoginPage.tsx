@@ -104,9 +104,9 @@ export default function LoginPage() {
   return (
     <main className="login-page">
       <section className="login-panel" aria-label="AutoSentinel sign in">
-        <a className="login-brand" href="/" aria-label="Return to AutoSentinel home">
-          <img src="/autosentinel-logo.png" alt="" />
-          <span>AUTOSENTINEL</span>
+        <a className="login-brand" href="/" aria-label="Return to Nirikshan home">
+          <img src="/nirikshan-logo.png" alt="Nirikshan logo" />
+          <span>NIRIKSHAN</span>
         </a>
 
         <div className="login-copy">

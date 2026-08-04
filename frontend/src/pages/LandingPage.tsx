@@ -548,9 +548,9 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#07100f]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-3 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-          <a href="/" className="flex items-center gap-3" aria-label="AutoSentinel home">
-            <img src="/autosentinel-logo.png" alt="" className="h-14 w-14 object-contain" />
-            <span className="text-xl font-extrabold tracking-[0.1em] text-white sm:text-2xl" style={{ fontFamily: "Aptos, 'Segoe UI', sans-serif" }}>AUTOSENTINEL</span>
+          <a href="/" className="flex items-center gap-3" aria-label="Nirikshan home">
+            <img src="/nirikshan-logo.png" alt="Nirikshan logo" className="h-20 w-20 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,0.4)]" />
+            <span className="text-xl font-extrabold tracking-[0.1em] text-white sm:text-2xl" style={{ fontFamily: "Aptos, 'Segoe UI', sans-serif" }}>NIRIKSHAN</span>
           </a>
           <nav className="flex flex-wrap justify-center gap-2" aria-label="Landing page navigation" style={{ fontFamily: "Aptos, 'Segoe UI', sans-serif" }}>
             <a href="/login" className="rounded-2xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 hover:scale-105 hover:border-amber-300/60 hover:bg-amber-300/15">Dashboard</a>
@@ -643,9 +643,9 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 lg:grid-cols-[minmax(0,1.65fr)_repeat(3,minmax(130px,.55fr))]">
             <div className="max-w-md">
-              <a href="/" className="inline-flex items-center gap-3" aria-label="AutoSentinel home">
-                <img src="/autosentinel-logo.png" alt="" className="h-13 w-13 object-contain" />
-                <span className="text-xl font-extrabold tracking-[0.1em] text-white">AUTOSENTINEL</span>
+              <a href="/" className="inline-flex items-center gap-3" aria-label="Nirikshan home">
+                <img src="/nirikshan-logo.png" alt="Nirikshan logo" className="h-20 w-20 object-contain drop-shadow-[0_0_12px_rgba(56,189,248,0.3)]" />
+                <span className="text-xl font-extrabold tracking-[0.1em] text-white">NIRIKSHAN</span>
               </a>
               <p className="mt-5 text-base leading-7 text-slate-400">Turn satellite imagery into clear, evidence-backed construction intelligence for land authorities and inspection teams.</p>
               <div className="mt-7 flex gap-3">
