@@ -6,7 +6,7 @@ import uuid
 import threading
 import importlib.util
 import numpy as np
-from fastapi import FastAPI, BackgroundTasks, Request, HTTPException
+from fastapi import FastAPI, BackgroundTasks, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -37,12 +37,29 @@ except Exception as exc:
     answer_officer_query = None
     assistant_import_error = str(exc)
 
+# PostgreSQL is the primary persistence backend.
+# supabase_client is kept as an optional legacy fallback for admin endpoints.
 try:
-    from backend.supabase_client import upsert_zones, fetch_zones
+    from backend.db_client import upsert_zones, fetch_zones
 except ImportError:
-    from supabase_client import upsert_zones, fetch_zones
+    from db_client import upsert_zones, fetch_zones
+
+try:
+    from backend.supabase_client import upsert_zones as _supa_upsert, fetch_zones as _supa_fetch
+    _supabase_available = True
+except Exception:
+    _supa_upsert = None
+    _supa_fetch = None
+try:
+    from backend.auth_routes import router as auth_router, get_current_user
+    from backend.models import User, RefreshToken, Zone
+except ImportError:
+    from auth_routes import router as auth_router, get_current_user
+    from models import User, RefreshToken, Zone
 
 app = FastAPI()
+
+app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -237,8 +254,29 @@ def load_generate_report_module():
     return module
 
 
-with open(DATA_PATH, encoding='utf-8') as f:
-    flagged_zones = [normalize_zone(zone) for zone in json.load(f)]
+# ── Load flagged zones: prefer PostgreSQL, fall back to local JSON ───────────
+def _load_flagged_zones() -> list:
+    """Load the 931 pre-computed flagged zones.
+
+    Primary: PostgreSQL (source='flagged').
+    Fallback: flagged_zones.json — used when DB is not yet configured,
+    migrations haven't been run, or DATABASE_URL is missing.
+    """
+    try:
+        db_zones = fetch_zones(source="flagged")
+        if db_zones:
+            print(f"[DB] Loaded {len(db_zones)} flagged zones from PostgreSQL")
+            return [normalize_zone(z) for z in db_zones]
+        # DB reachable but empty — fall through to seed from JSON
+        print("[DB] flagged zones table is empty — loading from JSON (run seed_db.py to persist)")
+    except Exception as exc:
+        print(f"[DB] Could not load flagged zones from PostgreSQL ({exc}) — falling back to JSON")
+
+    with open(DATA_PATH, encoding='utf-8') as f:
+        return [normalize_zone(zone) for zone in json.load(f)]
+
+
+flagged_zones = _load_flagged_zones()
 
 
 def load_persisted_live_zones():
@@ -407,26 +445,81 @@ async def scan_area(request: Request, background_tasks: BackgroundTasks):
 def get_scan_job(job_id: str):
     return get_job(job_id)
 
-# ─── Supabase admin endpoints ───────────────────────────────────────────────
+# ─── Admin endpoints (Protected) ───────────────────────────────────────────────
 
 @app.post("/admin/sync-flagged-to-supabase")
-def sync_flagged_zones():
-    """One-time / repeatable: push the precomputed flagged_zones.json into Supabase."""
+def sync_flagged_zones(current_user: User = Depends(get_current_user)):
+    """One-time / repeatable: push the precomputed flagged_zones.json into PostgreSQL.
+
+    The endpoint name is preserved for backwards compatibility.
+    Data is now written to PostgreSQL. If Supabase env vars are also set,
+    the zones are mirrored there as well.
+    """
+    results = {}
+    # Primary: PostgreSQL
     try:
         written = upsert_zones(flagged_zones, source="flagged")
-        return {"status": "ok", "written": written}
+        results["postgresql"] = {"status": "ok", "written": written}
     except Exception as e:
-        return {"status": "error", "error": str(e)}
+        results["postgresql"] = {"status": "error", "error": str(e)}
+
+    # Optional mirror: Supabase (if configured)
+    if _supabase_available and _supa_upsert is not None:
+        try:
+            written_supa = _supa_upsert(flagged_zones, source="flagged")
+            results["supabase"] = {"status": "ok", "written": written_supa}
+        except Exception as e:
+            results["supabase"] = {"status": "error", "error": str(e)}
+
+    overall = "ok" if results.get("postgresql", {}).get("status") == "ok" else "error"
+    return {"status": overall, **results}
+
+
+@app.post("/admin/sync-to-db")
+def sync_all_to_db(current_user: User = Depends(get_current_user)):
+    """Seed / refresh both flagged and live zones in PostgreSQL from in-memory state."""
+    results = {}
+    try:
+        written_flagged = upsert_zones(flagged_zones, source="flagged")
+        results["flagged"] = {"status": "ok", "written": written_flagged}
+    except Exception as e:
+        results["flagged"] = {"status": "error", "error": str(e)}
+    try:
+        written_live = upsert_zones(persisted_live_zones, source="live")
+        results["live"] = {"status": "ok", "written": written_live}
+    except Exception as e:
+        results["live"] = {"status": "error", "error": str(e)}
+    overall = "ok" if all(v.get("status") == "ok" for v in results.values()) else "partial"
+    return {"status": overall, **results}
 
 
 @app.get("/admin/zones-from-supabase")
-def zones_from_supabase(source: str = None):
-    """Read zones back from Supabase directly (bypasses local JSON entirely)."""
+def zones_from_supabase(source: str = None, current_user: User = Depends(get_current_user)):
+    """Read zones from PostgreSQL (primary) and optionally from Supabase (legacy).
+
+    Endpoint name preserved for backwards compatibility.
+    """
     try:
         zones = fetch_zones(source=source)
-        return {"zones": zones, "total": len(zones)}
+        return {"zones": zones, "total": len(zones), "backend": "postgresql"}
     except Exception as e:
         return {"status": "error", "error": str(e)}
+
+
+@app.get("/admin/db-health")
+def db_health(current_user: User = Depends(get_current_user)):
+    """Check PostgreSQL connectivity and zone counts."""
+    try:
+        flagged_count = len(fetch_zones(source="flagged", limit=10_000))
+        live_count = len(fetch_zones(source="live", limit=10_000))
+        return {
+            "status": "ok",
+            "postgresql": "connected",
+            "flagged_zones": flagged_count,
+            "live_zones": live_count,
+        }
+    except Exception as e:
+        return {"status": "error", "postgresql": "unreachable", "error": str(e)}
 
 @app.post("/zones/query")
 async def query_zones(request: Request, background_tasks: BackgroundTasks):
