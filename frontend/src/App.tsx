@@ -5,6 +5,7 @@ import L from 'leaflet'
 import axios from 'axios'
 import AssistantPanel from './AssistantPanel'
 import ZoneChatbot from './ZoneChatbot'
+import VoiceLocationSearch from './VoiceLocationSearch'
 import { API_BASE_URL } from './config'
 import LandingPage from './pages/LandingPage'
 import LoginPage, { isAuthenticated } from './pages/LoginPage'
@@ -543,6 +544,8 @@ function Dashboard() {
   const [placeLoading, setPlaceLoading] = useState<boolean>(false)
   const [placeError, setPlaceError] = useState<string>('')
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null)
+  const [coordinateLat, setCoordinateLat] = useState<string>('')
+  const [coordinateLng, setCoordinateLng] = useState<string>('')
   const [reportStatus, setReportStatus] = useState<string>('')
 
   const liveSummary = {
@@ -628,7 +631,7 @@ function Dashboard() {
     }
   }
 
-  const flyToLatLng = (lat: number, lng: number, label?: string) => {
+  const flyToCoordinates = (lat: number, lng: number, label?: string) => {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       alert('Invalid location coordinates.')
       return
@@ -648,6 +651,82 @@ function Dashboard() {
         lon: String(lng)
       }))
     }
+  }
+
+  const flyToLatLng = (lat: number, lng: number, label?: string) => flyToCoordinates(lat, lng, label)
+
+  const triggerBboxScan = async (bbox: Record<string, number>, placeName?: string) => {
+    const bboxDetail = {
+      minx: Number(bbox.minx),
+      miny: Number(bbox.miny),
+      maxx: Number(bbox.maxx),
+      maxy: Number(bbox.maxy),
+      west: Number(bbox.minx),
+      south: Number(bbox.miny),
+      east: Number(bbox.maxx),
+      north: Number(bbox.maxy),
+    }
+
+    window.dispatchEvent(new CustomEvent('bbox-drawn', { detail: bboxDetail }))
+
+    const resolvedLabel = placeName || 'selected area'
+    setScanStatus({ active: true, progress: `Scanning ${resolvedLabel}...`, jobId: null })
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/process_bbox`, bboxDetail)
+      const jobId = res.data?.job_id
+      if (!jobId) {
+        throw new Error('No job id returned by the scan service.')
+      }
+
+      setScanStatus({ active: true, progress: `Scanning ${resolvedLabel}...`, jobId })
+
+      const poll = window.setInterval(async () => {
+        try {
+          const statusRes = await axios.get(`${API_BASE_URL}/jobs/${jobId}`)
+          const progressText = statusRes.data?.progress || 'Processing...'
+          setScanStatus({ active: true, progress: progressText, jobId })
+
+          if (statusRes.data?.status === 'done' && statusRes.data?.result) {
+            window.clearInterval(poll)
+            setZones(prev => {
+              const next = mergeZones(prev, statusRes.data.result)
+              setSummary(current => getScanSummaryFromZones(next, current))
+              return next
+            })
+            setScanStatus({ active: false, progress: `Complete — ${statusRes.data.result.length} new zones found`, jobId })
+            setTimeout(() => setScanStatus({ active: false, progress: '', jobId: null }), 5000)
+            return
+          }
+
+          if (statusRes.data?.status === 'error') {
+            window.clearInterval(poll)
+            setScanStatus({ active: false, progress: `Failed: ${statusRes.data.error || 'Scan failed'}`, jobId: null })
+          }
+        } catch {
+          window.clearInterval(poll)
+          setScanStatus({ active: false, progress: 'Request failed', jobId: null })
+        }
+      }, 5000)
+    } catch (error) {
+      setScanStatus({ active: false, progress: 'Request failed', jobId: null })
+    }
+  }
+
+  const handleVoiceLocation = (lat: number, lon: number, placeName: string) => {
+    setCoordinateLat(String(lat))
+    setCoordinateLng(String(lon))
+    flyToCoordinates(lat, lon, placeName)
+    setPlaceQuery(placeName)
+
+    const bbox = {
+      minx: lon - 0.015,
+      miny: lat - 0.015,
+      maxx: lon + 0.015,
+      maxy: lat + 0.015,
+    }
+
+    void triggerBboxScan(bbox, placeName)
   }
 
   useEffect(() => {
@@ -749,6 +828,44 @@ function Dashboard() {
             placeholder="Search for a place or address"
             className="w-full rounded-xl border border-white/10 bg-neutral-900 px-3 py-2 text-sm text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
           />
+
+          <div className="mt-3 rounded-xl border border-white/10 bg-neutral-900/80 p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-neutral-400">Go to coordinates</p>
+              <VoiceLocationSearch onLocationFound={handleVoiceLocation} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                value={coordinateLat}
+                onChange={e => setCoordinateLat(e.target.value)}
+                placeholder="Lat"
+                className="rounded-lg border border-white/10 bg-neutral-800 px-2.5 py-2 text-xs text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
+              />
+              <input
+                type="number"
+                value={coordinateLng}
+                onChange={e => setCoordinateLng(e.target.value)}
+                placeholder="Lng"
+                className="rounded-lg border border-white/10 bg-neutral-800 px-2.5 py-2 text-xs text-white placeholder:text-neutral-500 focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const lat = Number(coordinateLat)
+                const lng = Number(coordinateLng)
+                if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+                  alert('Enter valid latitude and longitude values.')
+                  return
+                }
+                flyToCoordinates(lat, lng, 'Custom coordinates')
+              }}
+              className="mt-2 w-full rounded-lg bg-amber-400 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-black transition-all duration-200 ease-out hover:bg-amber-300"
+            >
+              Go
+            </button>
+          </div>
           <div className="mt-3 space-y-2">
             {placeLoading && (
               <div className="rounded-xl border border-white/10 bg-neutral-800 px-3 py-2 text-xs text-neutral-400">
