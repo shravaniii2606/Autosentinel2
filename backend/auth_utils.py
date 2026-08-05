@@ -35,17 +35,27 @@ GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _normalize_password_for_bcrypt(password: str) -> str:
+    """Bcrypt supports a maximum of 72 bytes; truncate safely before hashing/verifying."""
+    if password is None:
+        return ""
+    encoded = password.encode("utf-8")
+    if len(encoded) <= 72:
+        return password
+    return encoded[:72].decode("utf-8", errors="ignore")
+
+
 # ── Password Hashing ──────────────────────────────────────────────────────────
 def hash_password(password: str) -> str:
     """Return bcrypt hash of plain password."""
-    return pwd_context.hash(password)
+    return pwd_context.hash(_normalize_password_for_bcrypt(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify plain password against hashed password."""
     if not hashed_password:
         return False
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_normalize_password_for_bcrypt(plain_password), hashed_password)
 
 
 # ── JWT Operations ────────────────────────────────────────────────────────────

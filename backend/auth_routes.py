@@ -41,6 +41,8 @@ security = HTTPBearer(auto_error=False)
 # ── Request / Response Schemas ────────────────────────────────────────────────
 class GoogleAuthRequest(BaseModel):
     token: str
+    password: str | None = None
+    name: str | None = None
 
 
 class RefreshRequest(BaseModel):
@@ -67,6 +69,7 @@ class AuthTokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
     user: dict[str, Any]
+    needs_password_setup: bool = False
 
 
 # ── Dependency Helpers ────────────────────────────────────────────────────────
@@ -142,30 +145,57 @@ def auth_google(
             detail=f"Google authentication failed: {exc}",
         ) from exc
 
-    email = profile["email"]
+    email = profile["email"].strip().lower()
     google_sub = profile["sub"]
+    requested_name = (payload.name or profile.get("name") or "").strip()
+    requested_password = (payload.password or "").strip()
 
     # Check for existing user by email or ID
     user = db.query(User).filter((User.email == email) | (User.id == google_sub)).first()
+    needs_password_setup = False
 
     if not user:
-        # Create new user automatically on first Google sign in
+        # Create the account record first. If the user is signing in with Google for the first time,
+        # we require a password setup step so they can log in later with email/password.
+        generated_password = f"google-{email.split('@')[0]}-{google_sub[-6:]}"
         user = User(
             id=google_sub or f"usr_{uuid.uuid4().hex[:12]}",
             email=email,
-            name=profile.get("name"),
+            name=requested_name or email.split("@")[0].capitalize(),
             picture=profile.get("picture"),
             role="user",
+            hashed_password=hash_password(generated_password),
         )
         db.add(user)
         db.commit()
         db.refresh(user)
+        needs_password_setup = True
+
+        if requested_password:
+            user.hashed_password = hash_password(requested_password)
+            needs_password_setup = False
+            db.commit()
     else:
         # Update user profile info if changed
+        if requested_name and user.name != requested_name:
+            user.name = requested_name
         if profile.get("name") and user.name != profile.get("name"):
             user.name = profile.get("name")
         if profile.get("picture") and user.picture != profile.get("picture"):
             user.picture = profile.get("picture")
+
+        if requested_password:
+            if not user.hashed_password:
+                user.hashed_password = hash_password(requested_password)
+            elif not verify_password(requested_password, user.hashed_password):
+                user.hashed_password = hash_password(requested_password)
+            needs_password_setup = False
+
+        if not user.hashed_password:
+            needs_password_setup = True
+        elif requested_password:
+            needs_password_setup = False
+
         db.commit()
 
     # Issue JWT access & refresh tokens
@@ -204,6 +234,7 @@ def auth_google(
         "refresh_token": raw_refresh_token,
         "token_type": "bearer",
         "user": user.to_dict(),
+        "needs_password_setup": needs_password_setup,
     }
 
 
