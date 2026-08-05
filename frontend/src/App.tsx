@@ -547,6 +547,64 @@ function Dashboard() {
   const [coordinateLat, setCoordinateLat] = useState<string>('')
   const [coordinateLng, setCoordinateLng] = useState<string>('')
   const [reportStatus, setReportStatus] = useState<string>('')
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
+  const [drawerSection, setDrawerSection] = useState<'dashboard'|'subscriptions'|'profile'|'downloads'|'settings'>('dashboard')
+  const [language, setLanguage] = useState<'English'|'Hindi'|'Spanish'|'French'>('English')
+  const [theme, setTheme] = useState<'dark'|'light'>('dark')
+  const [profile, setProfile] = useState({
+    name: 'Nirikshan User',
+    email: '',
+    password: '',
+    occupation: ''
+  })
+  const [downloadHistory, setDownloadHistory] = useState<{ id: string; fileName: string; date: string }[]>([])
+
+  useEffect(() => {
+    try {
+      const savedProfile = localStorage.getItem('autosentinel.profile')
+      if (savedProfile) {
+        setProfile(JSON.parse(savedProfile))
+      }
+      const savedDownloads = localStorage.getItem('autosentinel.downloadedReports')
+      if (savedDownloads) {
+        setDownloadHistory(JSON.parse(savedDownloads))
+      }
+      const savedLanguage = localStorage.getItem('autosentinel.language')
+      if (savedLanguage) {
+        setLanguage(savedLanguage as 'English'|'Hindi'|'Spanish'|'French')
+      }
+      const savedTheme = localStorage.getItem('autosentinel.theme')
+      if (savedTheme) {
+        setTheme(savedTheme as 'dark'|'light')
+      }
+    } catch {
+      // ignore invalid storage data
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('autosentinel.profile', JSON.stringify(profile))
+    } catch {}
+  }, [profile])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('autosentinel.downloadedReports', JSON.stringify(downloadHistory))
+    } catch {}
+  }, [downloadHistory])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('autosentinel.language', language)
+      localStorage.setItem('autosentinel.theme', theme)
+      document.documentElement.dataset.theme = theme
+    } catch {}
+  }, [language, theme])
+
+  const saveProfileField = (field: keyof typeof profile, value: string) => {
+    setProfile(current => ({ ...current, [field]: value }))
+  }
 
   const liveSummary = {
     total: zones.length,
@@ -626,6 +684,14 @@ function Dashboard() {
       link.remove()
       URL.revokeObjectURL(url)
       setReportStatus('Report downloaded.')
+      try {
+        const newDownload = {
+          id: `${selectedZone.id}-${Date.now()}`,
+          fileName: `autosentinel_report_zone_${selectedZone.id}.pdf`,
+          date: new Date().toISOString()
+        }
+        setDownloadHistory(prev => [newDownload, ...prev].slice(0, 20))
+      } catch {}
     } catch (error) {
       setReportStatus(error instanceof Error ? error.message : 'Unable to download the report.')
     }
@@ -764,7 +830,64 @@ function Dashboard() {
   }, [placeQuery, mapInstance])
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0a0a0a] text-neutral-100">
+    <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-[#0a0a0a] text-neutral-100'}`}>
+      {sidebarMenuOpen && (
+        <div className="fixed inset-0 z-[1200] flex">
+          <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSidebarMenuOpen(false)} />
+          <aside className="relative z-[1201] w-80 max-w-full border-r border-white/10 bg-[#020b12] px-4 py-6 text-sm text-white shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Menu</p>
+                <h2 className="text-lg font-bold">Workspace</h2>
+              </div>
+              <button onClick={() => setSidebarMenuOpen(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">Close</button>
+            </div>
+            <nav className="space-y-2">
+              {['dashboard','subscriptions','profile','downloads','settings'].map(section => (
+                <button
+                  key={section}
+                  onClick={() => setDrawerSection(section as any)}
+                  className={`w-full rounded-2xl px-4 py-3 text-left transition ${drawerSection === section ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-950/80 text-slate-200 hover:bg-slate-800'}`}
+                >
+                  {section === 'dashboard' ? 'Dashboard' : section === 'subscriptions' ? 'Subscriptions' : section === 'profile' ? 'Profile' : section === 'downloads' ? 'Downloaded PDFs' : 'Settings'}
+                </button>
+              ))}
+            </nav>
+            <div className="mt-6 rounded-3xl border border-slate-700 bg-slate-950/90 p-4 text-xs text-slate-300">
+              {drawerSection === 'dashboard' && (
+                <div>
+                  <p className="font-semibold text-white">Quick overview</p>
+                  <p className="mt-2 text-slate-400">View recent dashboard metrics, filters, and most urgent zones.</p>
+                </div>
+              )}
+              {drawerSection === 'subscriptions' && (
+                <div>
+                  <p className="font-semibold text-white">Subscriptions</p>
+                  <p className="mt-2 text-slate-400">No active subscriptions yet. Manage alerts and premium access here.</p>
+                </div>
+              )}
+              {drawerSection === 'profile' && (
+                <div>
+                  <p className="font-semibold text-white">Profile</p>
+                  <p className="mt-2 text-slate-400">Update your name, email, occupation, and password.</p>
+                </div>
+              )}
+              {drawerSection === 'downloads' && (
+                <div>
+                  <p className="font-semibold text-white">Downloaded PDFs</p>
+                  <p className="mt-2 text-slate-400">All previously downloaded reports are listed here.</p>
+                </div>
+              )}
+              {drawerSection === 'settings' && (
+                <div>
+                  <p className="font-semibold text-white">Settings</p>
+                  <p className="mt-2 text-slate-400">Change language, theme, and other preferences.</p>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
 
       {/* Sidebar */}
       <div className="flex w-96 flex-shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[#0a0a0a]">
