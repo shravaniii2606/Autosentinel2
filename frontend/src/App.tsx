@@ -547,7 +547,7 @@ function Dashboard() {
   const [coordinateLat, setCoordinateLat] = useState<string>('')
   const [coordinateLng, setCoordinateLng] = useState<string>('')
   const [reportStatus, setReportStatus] = useState<string>('')
-  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(true)
   const [drawerSection, setDrawerSection] = useState<'dashboard'|'subscriptions'|'profile'|'downloads'|'settings'>('dashboard')
   const [language, setLanguage] = useState<'English'|'Hindi'|'Spanish'|'French'>('English')
   const [theme, setTheme] = useState<'dark'|'light'>('dark')
@@ -831,6 +831,17 @@ function Dashboard() {
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-[#0a0a0a] text-neutral-100'}`}>
+      {!sidebarMenuOpen && (
+        <button
+          type="button"
+          onClick={() => setSidebarMenuOpen(true)}
+          className="fixed left-4 top-4 z-[1202] rounded-xl border border-white/10 bg-[#020b12] px-3 py-2 text-xs font-medium uppercase tracking-[0.2em] text-white shadow-lg shadow-black/30 transition hover:bg-[#0d1a24]"
+          aria-label="Open dashboard sidebar"
+        >
+          Menu
+        </button>
+      )}
+
       {sidebarMenuOpen && (
         <div className="fixed inset-0 z-[1200] flex">
           <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setSidebarMenuOpen(false)} />
