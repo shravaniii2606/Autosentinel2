@@ -555,7 +555,8 @@ function Dashboard() {
     name: 'Nirikshan User',
     email: '',
     password: '',
-    occupation: ''
+    occupation: '',
+    plan: 'Free'
   })
   const [downloadHistory, setDownloadHistory] = useState<{ id: string; fileName: string; date: string }[]>([])
 
@@ -565,6 +566,22 @@ function Dashboard() {
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile))
       }
+
+      const savedUser = sessionStorage.getItem('autosentinel.user')
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser)
+          setProfile(current => ({
+            ...current,
+            name: user.name || current.name,
+            email: user.email || current.email,
+            plan: current.plan || 'Free',
+          }))
+        } catch {
+          // ignore invalid saved user data
+        }
+      }
+
       const savedDownloads = localStorage.getItem('autosentinel.downloadedReports')
       if (savedDownloads) {
         setDownloadHistory(JSON.parse(savedDownloads))
@@ -874,7 +891,7 @@ function Dashboard() {
               {drawerSection === 'subscriptions' && (
                 <div>
                   <p className="font-semibold text-white">Subscriptions</p>
-                  <p className="mt-2 text-slate-400">No active subscriptions yet. Manage alerts and premium access here.</p>
+                  <p className="mt-2 text-slate-400">Choose a plan and unlock premium scanning access.</p>
                 </div>
               )}
               {drawerSection === 'profile' && (
@@ -1252,7 +1269,135 @@ function Dashboard() {
 
       {/* Map */}
       <div className="flex-1 relative">
-        <MapContainer
+        {drawerSection === 'subscriptions' && (
+          <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>
+            <div className={`w-full max-w-4xl rounded-[28px] border p-8 shadow-2xl ${theme === 'dark' ? 'border-white/10 bg-[#091321] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+              <div className="mb-8 text-center">
+                <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Subscriptions</p>
+                <h2 className="mt-2 text-3xl font-bold">Choose your plan</h2>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  { label: '1 Month', price: '₹499', value: '1 Month', description: 'Best for short-term access' },
+                  { label: '3 Months', price: '₹1,259', value: '3 Months', description: 'Great for ongoing project work' },
+                  { label: '1 Year', price: '₹5,500', value: '1 Year', description: 'Best value for long-term use' },
+                ].map(option => {
+                  const isSelected = profile.plan === option.value
+                  const isActive = profile.plan !== 'Free' && profile.plan !== ''
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setProfile(current => ({ ...current, plan: option.value }))}
+                      className={`rounded-[24px] border p-6 text-left transition hover:-translate-y-1 ${isSelected ? 'border-amber-400 bg-amber-400/10 shadow-lg shadow-amber-500/10' : theme === 'dark' ? 'border-white/10 bg-slate-900/40 hover:bg-slate-900' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-lg font-bold">{option.label}</p>
+                        {isSelected && (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-400">
+                            Active
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-4 text-3xl font-black text-amber-400">{option.price}</p>
+                      <p className="mt-2 text-sm text-slate-400">{option.description}</p>
+
+                      <div className="mt-6 rounded-2xl border border-dashed border-slate-500/30 px-3 py-2 text-xs uppercase tracking-[0.2em] text-slate-400">
+                        {isSelected ? 'Selected plan' : isActive ? 'Switch plan' : 'Buy now'}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {drawerSection === 'profile' && (
+          <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>
+            <div className={`w-full max-w-lg rounded-[28px] border p-8 shadow-2xl ${theme === 'dark' ? 'border-white/10 bg-[#091321] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+              <div className="mb-6 text-center">
+                <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Profile</p>
+                <h2 className="mt-2 text-3xl font-bold">Your account</h2>
+              </div>
+
+              <div className="space-y-4">
+                <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Name</p>
+                  <p className="mt-2 text-xl font-semibold">{profile.name || 'Nirikshan User'}</p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Email</p>
+                  <p className="mt-2 text-lg font-medium">{profile.email || 'No email saved'}</p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Plan</p>
+                  <div className="mt-3 flex items-center justify-between gap-4">
+                    <p className="text-lg font-semibold">{profile.plan || 'Free'}</p>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${profile.plan !== 'Free' && profile.plan !== '' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                      {profile.plan !== 'Free' && profile.plan !== '' ? 'Active' : 'Free'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {drawerSection === 'settings' && (
+          <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>
+            <div className={`w-full max-w-xl rounded-[28px] border p-8 shadow-2xl ${theme === 'dark' ? 'border-white/10 bg-[#091321] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+              <div className="mb-6 text-center">
+                <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Settings</p>
+                <h2 className="mt-2 text-3xl font-bold">Preferences</h2>
+              </div>
+
+              <div className="space-y-6">
+                <div className={`rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <label className="mb-3 block text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Language</label>
+                  <select
+                    value={language}
+                    onChange={e => setLanguage(e.target.value as 'English'|'Hindi'|'Spanish'|'French')}
+                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10 ${theme === 'dark' ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-900'}`}
+                  >
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                  </select>
+                </div>
+
+                <div className={`rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
+                  <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Appearance</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setTheme('dark')}
+                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${theme === 'dark' ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-slate-950 text-slate-200'}`}
+                    >
+                      Dark mode
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTheme('light')}
+                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${theme === 'light' ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-200 bg-white text-slate-700'}`}
+                    >
+                      White mode
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {drawerSection !== 'profile' && drawerSection !== 'settings' && (
+          <MapContainer
           center={[19.42, 72.85]}
           zoom={12}
           className="h-full w-full"
@@ -1358,6 +1503,7 @@ function Dashboard() {
             }}
           />
         </MapContainer>
+        )}
 
         {/* Map overlay — stats */}
         <div className="absolute top-4 right-4 bg-sky-50/90 backdrop-blur rounded-lg p-3 z-[1000] shadow-sm border border-slate-200">
@@ -1582,7 +1728,7 @@ function Dashboard() {
     return null
   }
 
-  function DrawControl({ drawMode, onDraw }: { drawMode: 'none'|'circle'|'pen'|'rectangle', onDraw: (geojson: any|null) => void }) {
+  function DrawControl({ drawMode, onDraw, onCircleDraw }: { drawMode: 'none'|'circle'|'pen'|'rectangle', onDraw: (geojson: any|null) => void, onCircleDraw?: (center: [number, number], radius: number) => void }) {
     const map = useMap()
     useEffect(() => {
       ;(window as any).mapInstance = map
