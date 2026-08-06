@@ -73,7 +73,7 @@ app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://nirikshan2-ktqj.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
