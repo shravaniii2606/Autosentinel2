@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import axios from 'axios'
-import { API_BASE_URL } from './config'
+import { api, isUpgradeRequiredError } from './lib/api'
+import type { UpgradeRequiredError } from './lib/api'
 
 interface ZoneChatbotProps {
   zoneId: number | string
+  onUpgradeRequired?: (error: UpgradeRequiredError) => void
 }
 
 interface ChatMessage {
@@ -20,7 +22,7 @@ const quickPrompts = [
   'Summarize the risk level for this area.',
 ]
 
-export default function ZoneChatbot({ zoneId }: ZoneChatbotProps) {
+export default function ZoneChatbot({ zoneId, onUpgradeRequired }: ZoneChatbotProps) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -63,7 +65,7 @@ export default function ZoneChatbot({ zoneId }: ZoneChatbotProps) {
     setError('')
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/assistant/zone-query`, {
+      const response = await api.post('/assistant/zone-query', {
         zone_id: zoneId,
         text: trimmedQuestion,
       })
@@ -78,6 +80,11 @@ export default function ZoneChatbot({ zoneId }: ZoneChatbotProps) {
         },
       ])
     } catch (err) {
+      if (isUpgradeRequiredError(err)) {
+        onUpgradeRequired?.(err)
+        return
+      }
+
       const fallbackMessage = axios.isAxiosError(err)
         ? typeof err.response?.data?.detail === 'string'
           ? err.response.data.detail

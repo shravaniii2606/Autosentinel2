@@ -19,9 +19,11 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     Double,
     ForeignKey,
+    Integer,
     String,
     Text,
     func,
@@ -145,6 +147,12 @@ class User(Base):
     """User account model for AutoSentinel authentication."""
 
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "subscription_status IN ('free', 'active', 'cancelled')",
+            name="ck_users_subscription_status",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
@@ -152,6 +160,15 @@ class User(Base):
     picture: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[str] = mapped_column(String(32), default="user", server_default="user", nullable=False)
     hashed_password: Mapped[str | None] = mapped_column(Text, nullable=True)
+    subscription_status: Mapped[str] = mapped_column(
+        String(16),
+        default="free",
+        server_default="free",
+        nullable=False,
+    )
+    subscription_plan: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    subscribed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    scans_used: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -176,6 +193,10 @@ class User(Base):
             "name": self.name,
             "picture": self.picture,
             "role": self.role,
+            "subscription_status": self.subscription_status,
+            "subscription_plan": self.subscription_plan,
+            "subscribed_at": self.subscribed_at.isoformat() if self.subscribed_at else None,
+            "scans_used": self.scans_used,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

@@ -5,11 +5,13 @@ import json
 import uuid
 import threading
 import importlib.util
+from datetime import datetime, timezone
 import numpy as np
 from fastapi import FastAPI, BackgroundTasks, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy.orm import Session
 
 try:
     from backend.gee_auth import (
@@ -56,10 +58,14 @@ except Exception:
     _supa_fetch = None
 try:
     from backend.auth_routes import router as auth_router, get_current_user
+    from backend.database import get_db
     from backend.models import User, RefreshToken, Zone
+    from backend.subscription import FREE_SCAN_LIMIT, can_scan, is_subscribed, scans_remaining
 except ImportError:
     from auth_routes import router as auth_router, get_current_user
+    from database import get_db
     from models import User, RefreshToken, Zone
+    from subscription import FREE_SCAN_LIMIT, can_scan, is_subscribed, scans_remaining
 
 app = FastAPI()
 
@@ -77,8 +83,94 @@ app.mount(
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), '..', 'data', 'images')),
     name="images"
 )
+
+
+def subscription_payload(user: User) -> dict:
+    subscribed = is_subscribed(user)
+    return {
+        "status": user.subscription_status,
+        "plan": user.subscription_plan,
+        "scans_used": user.scans_used,
+        "scans_remaining": scans_remaining(user),
+        "is_subscribed": subscribed,
+    }
+
+
+def subscription_required_response(feature: str, message: str):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error": "subscription_required",
+            "feature": feature,
+            "message": message,
+        },
+    )
+
+
+def free_limit_reached_response(user: User):
+    return JSONResponse(
+        status_code=403,
+        content={
+            "error": "free_limit_reached",
+            "message": "Free plan scan limit reached. Upgrade to continue scanning.",
+            "scans_used": user.scans_used,
+            "scan_limit": FREE_SCAN_LIMIT,
+            "scans_remaining": 0,
+        },
+    )
+
+
+def create_user_scan_job(
+    bbox: dict,
+    background_tasks: BackgroundTasks,
+    current_user: User,
+    db: Session,
+):
+    if not can_scan(current_user):
+        return free_limit_reached_response(current_user)
+
+    if not is_subscribed(current_user):
+        current_user.scans_used = int(current_user.scans_used or 0) + 1
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+
+    return create_scan_job(bbox, background_tasks)
+
+
+@app.get("/me/subscription")
+def get_subscription(current_user: User = Depends(get_current_user)):
+    return subscription_payload(current_user)
+
+
+@app.post("/subscription/activate")
+async def activate_subscription(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    body = await request.json()
+    plan = str(body.get("plan") or body.get("subscription_plan") or "paid")
+
+    # TODO: This endpoint has no payment verification and must not be exposed as-is in production.
+    current_user.subscription_status = "active"
+    current_user.subscription_plan = plan
+    current_user.subscribed_at = datetime.now(timezone.utc)
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    return subscription_payload(current_user)
+
+
 @app.post("/assistant/query")
-async def assistant_query(request: Request):
+async def assistant_query(request: Request, current_user: User = Depends(get_current_user)):
+    if not is_subscribed(current_user):
+        return subscription_required_response(
+            "ai_chatbot",
+            "Upgrade to a paid plan to use the AI chatbot.",
+        )
+
     if answer_officer_query is None:
         raise HTTPException(
             status_code=503,
@@ -90,7 +182,13 @@ async def assistant_query(request: Request):
 
 
 @app.post("/assistant/zone-query")
-async def assistant_zone_query(request: Request):
+async def assistant_zone_query(request: Request, current_user: User = Depends(get_current_user)):
+    if not is_subscribed(current_user):
+        return subscription_required_response(
+            "ai_chatbot",
+            "Upgrade to a paid plan to use the AI chatbot.",
+        )
+
     body = await request.json()
     if "zone_id" not in body or body["zone_id"] is None or body["zone_id"] == "":
         raise HTTPException(status_code=400, detail="zone_id is required")
@@ -404,7 +502,13 @@ def get_zone_images(zone_id: str, request: Request):
     }
 
 @app.get("/zones/{zone_id}/report")
-def get_zone_report(zone_id: str):  # changed int to str
+def get_zone_report(zone_id: str, current_user: User = Depends(get_current_user)):  # changed int to str
+    if not is_subscribed(current_user):
+        return subscription_required_response(
+            "report_generation",
+            "Upgrade to a paid plan to generate PDF reports.",
+        )
+
     base = os.path.join(os.path.dirname(__file__), '..')
     report_path = os.path.join(base, 'data', f'report_zone_{zone_id}.pdf')
 
@@ -462,9 +566,14 @@ def get_zone(zone_id: str):
 # ─── Live scan endpoints ────────────────────────────────────────────────────────
 
 @app.post("/scan")
-async def scan_area(request: Request, background_tasks: BackgroundTasks):
+async def scan_area(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     payload = await request.json()
-    return create_scan_job(payload, background_tasks)
+    return create_user_scan_job(payload, background_tasks, current_user, db)
 
 @app.get("/scan/{job_id}")
 def get_scan_job(job_id: str):
@@ -547,7 +656,12 @@ def db_health(current_user: User = Depends(get_current_user)):
         return {"status": "error", "postgresql": "unreachable", "error": str(e)}
 
 @app.post("/zones/query")
-async def query_zones(request: Request, background_tasks: BackgroundTasks):
+async def query_zones(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Called by frontend Get Data button — extracts bbox from drawn polygon and triggers live GEE scan"""
     payload = await request.json()
 
@@ -570,13 +684,18 @@ async def query_zones(request: Request, background_tasks: BackgroundTasks):
         'maxy': max(lats)
     }
 
-    return create_scan_job(bbox, background_tasks)
+    return create_user_scan_job(bbox, background_tasks, current_user, db)
 
 @app.post("/process_bbox")
-async def process_bbox(request: Request, background_tasks: BackgroundTasks):
+async def process_bbox(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Called by leaflet-draw rectangle tool"""
     bbox = await request.json()
-    return create_scan_job(bbox, background_tasks)
+    return create_user_scan_job(bbox, background_tasks, current_user, db)
 
 
 def create_scan_job(bbox: dict, background_tasks: BackgroundTasks):

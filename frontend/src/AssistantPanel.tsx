@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
-import axios from 'axios'
-import { API_BASE_URL } from './config'
+import { api, isUpgradeRequiredError } from './lib/api'
 
 export default function AssistantPanel() {
   const [query, setQuery] = useState('')
@@ -14,14 +13,16 @@ export default function AssistantPanel() {
     setLoading(true)
     setAnswer('')
     try {
-      const res = await axios.post(`${API_BASE_URL}/assistant/query`, {
+      const res = await api.post('/assistant/query', {
         text,
         officer_id: 'field_officer_1',
       })
       setAnswer(res.data.answer)
     } catch (err: any) {
       setAnswer(
-        err?.response?.status === 503
+        isUpgradeRequiredError(err)
+          ? `Upgrade required: ${err.message}`
+          : err?.response?.status === 503
           ? 'AI assistant is temporarily unavailable.'
           : 'Error reaching assistant: ' + (err?.message ?? 'unknown error')
       )

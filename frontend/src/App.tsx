@@ -7,6 +7,8 @@ import AssistantPanel from './AssistantPanel'
 import ZoneChatbot from './ZoneChatbot'
 import VoiceLocationSearch from './VoiceLocationSearch'
 import { API_BASE_URL } from './config'
+import { activateSubscription, api, apiFetch, getSubscription, isUpgradeRequiredError } from './lib/api'
+import type { SubscriptionSummary, UpgradeRequiredError } from './lib/api'
 import LandingPage from './pages/LandingPage'
 import LoginPage, { isAuthenticated } from './pages/LoginPage'
 import { formatViolationType } from './utils/violationLabel'
@@ -459,7 +461,7 @@ function LiveScanPanel({ onZonesReceived }: { onZonesReceived: (zones: Zone[]) =
     setProgress('Starting scan...')
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/process_bbox`, drawnBounds)
+      const res = await api.post('/process_bbox', drawnBounds)
       const id = res.data.job_id
       setJobId(id)
 
@@ -481,7 +483,7 @@ function LiveScanPanel({ onZonesReceived }: { onZonesReceived: (zones: Zone[]) =
       }, 5000)
     } catch (err) {
       setScanning(false)
-      setProgress('Request failed')
+      setProgress(isUpgradeRequiredError(err) ? `Upgrade required: ${err.message}` : 'Request failed')
     }
   }
 
@@ -511,6 +513,67 @@ function LiveScanPanel({ onZonesReceived }: { onZonesReceived: (zones: Zone[]) =
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+interface UpgradeNotice {
+  title: string
+  featureLabel: string
+  message: string
+  detail: string
+}
+
+function UpgradePromptModal({
+  notice,
+  onClose,
+  onViewPlans,
+}: {
+  notice: UpgradeNotice | null
+  onClose: () => void
+  onViewPlans: () => void
+}) {
+  if (!notice) return null
+
+  return (
+    <div className="fixed inset-0 z-[1400] grid place-items-center bg-slate-950/75 px-4 backdrop-blur-md">
+      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-amber-300/25 bg-[#07100f] text-white shadow-[0_28px_80px_rgba(0,0,0,0.55)]">
+        <div className="border-b border-white/10 bg-amber-300/10 px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-200">Upgrade required</p>
+          <h2 className="mt-1 text-xl font-bold">{notice.title}</h2>
+        </div>
+        <div className="px-5 py-5">
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Locked feature</p>
+                <p className="mt-1 text-base font-semibold text-white">{notice.featureLabel}</p>
+              </div>
+              <span className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200">
+                Paid
+              </span>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-slate-300">{notice.message}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{notice.detail}</p>
+          </div>
+          <div className="mt-5 flex gap-2">
+            <button
+              type="button"
+              onClick={onViewPlans}
+              className="flex-1 rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-200/70"
+            >
+              View plans
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08] focus:outline-none focus:ring-2 focus:ring-slate-300/40"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -547,7 +610,11 @@ function Dashboard() {
   const [coordinateLat, setCoordinateLat] = useState<string>('')
   const [coordinateLng, setCoordinateLng] = useState<string>('')
   const [reportStatus, setReportStatus] = useState<string>('')
-  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(true)
+  const [subscription, setSubscription] = useState<SubscriptionSummary | null>(null)
+  const [upgradeNotice, setUpgradeNotice] = useState<UpgradeNotice | null>(null)
+  const [activatingPlan, setActivatingPlan] = useState<string>('')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('')
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
   const [drawerSection, setDrawerSection] = useState<'dashboard'|'subscriptions'|'profile'|'downloads'|'settings'>('dashboard')
   const [language, setLanguage] = useState<'English'|'Hindi'|'Spanish'|'French'>('English')
   const [theme, setTheme] = useState<'dark'|'light'>('dark')
@@ -559,6 +626,63 @@ function Dashboard() {
     plan: 'Free'
   })
   const [downloadHistory, setDownloadHistory] = useState<{ id: string; fileName: string; date: string }[]>([])
+
+  const refreshSubscription = async () => {
+    try {
+      const nextSubscription = await getSubscription()
+      setSubscription(nextSubscription)
+      setProfile(current => ({
+        ...current,
+        plan: nextSubscription.is_subscribed ? nextSubscription.plan || 'Paid' : 'Free',
+      }))
+    } catch {
+      setSubscription(null)
+    }
+  }
+
+  const handleActivatePlan = async (plan: string) => {
+    setActivatingPlan(plan)
+    setSubscriptionStatus('')
+    try {
+      const nextSubscription = await activateSubscription(plan)
+      setSubscription(nextSubscription)
+      setProfile(current => ({ ...current, plan: nextSubscription.plan || plan }))
+      setSubscriptionStatus(`${nextSubscription.plan || plan} is active on this account.`)
+    } catch (error) {
+      setSubscriptionStatus(error instanceof Error ? error.message : 'Unable to activate this plan.')
+    } finally {
+      setActivatingPlan('')
+    }
+  }
+
+  const showUpgradePrompt = (error: UpgradeRequiredError, fallbackFeature: string) => {
+    const feature = error.feature || fallbackFeature
+    const featureLabel = feature === 'report_generation'
+      ? 'PDF report generation'
+      : feature === 'ai_chatbot'
+      ? 'AI compliance assistant'
+      : 'Satellite scans'
+
+    setUpgradeNotice({
+      title: error.code === 'free_limit_reached' ? 'Free scan limit reached' : 'This feature is paid',
+      featureLabel,
+      message: error.message,
+      detail: error.code === 'free_limit_reached'
+        ? 'Free accounts include 3 lifetime scans. Upgrade to continue scanning without limits.'
+        : 'Upgrade to unlock AI assistance, official PDF reports, and unlimited scan capacity.',
+    })
+  }
+
+  const openSubscriptionMenu = () => {
+    setUpgradeNotice(null)
+    setDrawerSection('subscriptions')
+    setSidebarMenuOpen(false)
+  }
+
+  const openDrawerSection = (section: typeof drawerSection) => {
+    setDrawerSection(section)
+    setSidebarMenuOpen(false)
+  }
 
   useEffect(() => {
     try {
@@ -636,6 +760,7 @@ function Dashboard() {
   useEffect(() => {
     axios.get(`${API_BASE_URL}/zones`).then(res => setZones(res.data.zones))
     axios.get(`${API_BASE_URL}/zones/summary`).then(res => setSummary(res.data))
+    void refreshSubscription()
   }, [])
 
   useEffect(() => {
@@ -680,7 +805,7 @@ function Dashboard() {
 
     setReportStatus('Preparing PDF...')
     try {
-      const response = await fetch(`${API_BASE_URL}/zones/${encodeURIComponent(String(selectedZone.id))}/report`)
+      const response = await apiFetch(`/zones/${encodeURIComponent(String(selectedZone.id))}/report`)
       if (!response.ok) {
         let message = 'Unable to generate the report.'
         try {
@@ -710,6 +835,12 @@ function Dashboard() {
         setDownloadHistory(prev => [newDownload, ...prev].slice(0, 20))
       } catch {}
     } catch (error) {
+      if (isUpgradeRequiredError(error)) {
+        setReportStatus('')
+        showUpgradePrompt(error, 'report_generation')
+        return
+      }
+
       setReportStatus(error instanceof Error ? error.message : 'Unable to download the report.')
     }
   }
@@ -756,11 +887,12 @@ function Dashboard() {
     setScanStatus({ active: true, progress: `Scanning ${resolvedLabel}...`, jobId: null })
 
     try {
-      const res = await axios.post(`${API_BASE_URL}/process_bbox`, bboxDetail)
+      const res = await api.post('/process_bbox', bboxDetail)
       const jobId = res.data?.job_id
       if (!jobId) {
         throw new Error('No job id returned by the scan service.')
       }
+      void refreshSubscription()
 
       setScanStatus({ active: true, progress: `Scanning ${resolvedLabel}...`, jobId })
 
@@ -792,7 +924,15 @@ function Dashboard() {
         }
       }, 5000)
     } catch (error) {
-      setScanStatus({ active: false, progress: 'Request failed', jobId: null })
+      if (isUpgradeRequiredError(error)) {
+        showUpgradePrompt(error, 'scan')
+      }
+
+      setScanStatus({
+        active: false,
+        progress: isUpgradeRequiredError(error) ? error.message : 'Request failed',
+        jobId: null,
+      })
     }
   }
 
@@ -848,16 +988,11 @@ function Dashboard() {
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-[#0a0a0a] text-neutral-100'}`}>
-      {!sidebarMenuOpen && (
-        <button
-          type="button"
-          onClick={() => setSidebarMenuOpen(true)}
-          className="fixed left-4 top-4 z-[1202] rounded-xl border border-white/10 bg-[#020b12] px-3 py-2 text-xs font-medium uppercase tracking-[0.2em] text-white shadow-lg shadow-black/30 transition hover:bg-[#0d1a24]"
-          aria-label="Open dashboard sidebar"
-        >
-          Menu
-        </button>
-      )}
+      <UpgradePromptModal
+        notice={upgradeNotice}
+        onClose={() => setUpgradeNotice(null)}
+        onViewPlans={openSubscriptionMenu}
+      />
 
       {sidebarMenuOpen && (
         <div className="fixed inset-0 z-[1200] flex">
@@ -868,13 +1003,25 @@ function Dashboard() {
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Menu</p>
                 <h2 className="text-lg font-bold">Workspace</h2>
               </div>
-              <button onClick={() => setSidebarMenuOpen(false)} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">Close</button>
+              <button
+                type="button"
+                onClick={() => setSidebarMenuOpen(false)}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-slate-700 bg-slate-900/80 text-slate-200 shadow-sm transition hover:border-slate-500 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-300/70"
+                aria-label="Close menu"
+                title="Close menu"
+              >
+                <span className="sr-only">Close menu</span>
+                <span aria-hidden="true" className="relative block h-4 w-4">
+                  <span className="absolute left-0 top-1/2 h-0.5 w-4 -translate-y-1/2 rotate-45 rounded-full bg-current" />
+                  <span className="absolute left-0 top-1/2 h-0.5 w-4 -translate-y-1/2 -rotate-45 rounded-full bg-current" />
+                </span>
+              </button>
             </div>
             <nav className="space-y-2">
               {['dashboard','subscriptions','profile','downloads','settings'].map(section => (
                 <button
                   key={section}
-                  onClick={() => setDrawerSection(section as any)}
+                  onClick={() => openDrawerSection(section as typeof drawerSection)}
                   className={`w-full rounded-2xl px-4 py-3 text-left transition ${drawerSection === section ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-950/80 text-slate-200 hover:bg-slate-800'}`}
                 >
                   {section === 'dashboard' ? 'Dashboard' : section === 'subscriptions' ? 'Subscriptions' : section === 'profile' ? 'Profile' : section === 'downloads' ? 'Downloaded PDFs' : 'Settings'}
@@ -927,7 +1074,57 @@ function Dashboard() {
             <a href="/" className="flex items-center gap-3" aria-label="Nirikshan home"></a>
            <img src="/nirikshan-logo.png" alt="Nirikshan logo" className="h-10 w-10 object-contain" />
             <h1 className="text-lg font-bold text-white">NIRIKSHAN</h1>
+            <button
+              type="button"
+              onClick={() => setSidebarMenuOpen(true)}
+              className="ml-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-neutral-900 text-slate-200 shadow-sm shadow-black/20 transition hover:border-amber-300/50 hover:bg-neutral-800 hover:text-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-300/70"
+              aria-label="Open menu"
+              title="Open menu"
+            >
+              <span className="sr-only">Open menu</span>
+              <span aria-hidden="true" className="flex h-4 w-5 flex-col justify-between">
+                <span className="h-0.5 rounded-full bg-current" />
+                <span className="h-0.5 rounded-full bg-current" />
+                <span className="h-0.5 rounded-full bg-current" />
+              </span>
+            </button>
           </div>
+          {subscription && (
+            <div className="mt-4 rounded-xl border border-white/10 bg-neutral-900 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-neutral-400">
+                    {subscription.is_subscribed ? 'Paid plan' : 'Free plan'}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-white">
+                    {subscription.is_subscribed
+                      ? 'Unlimited scans'
+                      : `${subscription.scans_remaining ?? 0} scans remaining`}
+                  </p>
+                </div>
+                {!subscription.is_subscribed && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDrawerSection('subscriptions')
+                      setSidebarMenuOpen(false)
+                    }}
+                    className="rounded-lg bg-amber-300 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-950 transition hover:bg-amber-200"
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+              {!subscription.is_subscribed && (
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-neutral-800">
+                  <div
+                    className="h-full rounded-full bg-amber-300 transition-all"
+                    style={{ width: `${Math.max(0, Math.min(100, ((subscription.scans_remaining ?? 0) / 3) * 100))}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Summary cards */}
@@ -1254,7 +1451,10 @@ function Dashboard() {
   )}
               {/* Before/After slider */}
 <ZoneImages zoneId={selectedZone.id} lat={selectedZone.lat} lon={selectedZone.lon} />
-<ZoneChatbot zoneId={selectedZone.id} />
+<ZoneChatbot
+  zoneId={selectedZone.id}
+  onUpgradeRequired={(error) => showUpgradePrompt(error, 'ai_chatbot')}
+/>
             </div>
           </div>
         )}
@@ -1275,6 +1475,11 @@ function Dashboard() {
               <div className="mb-8 text-center">
                 <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Subscriptions</p>
                 <h2 className="mt-2 text-3xl font-bold">Choose your plan</h2>
+                {subscriptionStatus && (
+                  <p className={`mt-3 text-sm ${subscriptionStatus.includes('active') ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {subscriptionStatus}
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -1283,14 +1488,16 @@ function Dashboard() {
                   { label: '3 Months', price: '₹1,259', value: '3 Months', description: 'Great for ongoing project work' },
                   { label: '1 Year', price: '₹5,500', value: '1 Year', description: 'Best value for long-term use' },
                 ].map(option => {
-                  const isSelected = profile.plan === option.value
-                  const isActive = profile.plan !== 'Free' && profile.plan !== ''
+                  const isSelected = subscription?.is_subscribed && subscription.plan === option.value
+                  const isActive = Boolean(subscription?.is_subscribed)
+                  const isActivating = activatingPlan === option.value
 
                   return (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setProfile(current => ({ ...current, plan: option.value }))}
+                      onClick={() => void handleActivatePlan(option.value)}
+                      disabled={Boolean(activatingPlan)}
                       className={`rounded-[24px] border p-6 text-left transition hover:-translate-y-1 ${isSelected ? 'border-amber-400 bg-amber-400/10 shadow-lg shadow-amber-500/10' : theme === 'dark' ? 'border-white/10 bg-slate-900/40 hover:bg-slate-900' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -1306,7 +1513,7 @@ function Dashboard() {
                       <p className="mt-2 text-sm text-slate-400">{option.description}</p>
 
                       <div className="mt-6 rounded-2xl border border-dashed border-slate-500/30 px-3 py-2 text-xs uppercase tracking-[0.2em] text-slate-400">
-                        {isSelected ? 'Selected plan' : isActive ? 'Switch plan' : 'Buy now'}
+                        {isActivating ? 'Activating...' : isSelected ? 'Active plan' : isActive ? 'Switch plan' : 'Buy now'}
                       </div>
                     </button>
                   )
@@ -1338,9 +1545,11 @@ function Dashboard() {
                 <div className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Plan</p>
                   <div className="mt-3 flex items-center justify-between gap-4">
-                    <p className="text-lg font-semibold">{profile.plan || 'Free'}</p>
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${profile.plan !== 'Free' && profile.plan !== '' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
-                      {profile.plan !== 'Free' && profile.plan !== '' ? 'Active' : 'Free'}
+                    <p className="text-lg font-semibold">
+                      {subscription?.is_subscribed ? subscription.plan || 'Paid' : 'Free'}
+                    </p>
+                    <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] ${subscription?.is_subscribed ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-500/10 text-slate-400'}`}>
+                      {subscription?.is_subscribed ? 'Active' : 'Free'}
                     </span>
                   </div>
                 </div>
@@ -1396,7 +1605,30 @@ function Dashboard() {
           </div>
         )}
 
-        {drawerSection !== 'profile' && drawerSection !== 'settings' && (
+        {drawerSection === 'downloads' && (
+          <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>
+            <div className={`w-full max-w-2xl rounded-[28px] border p-8 shadow-2xl ${theme === 'dark' ? 'border-white/10 bg-[#091321] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
+              <div className="mb-6 text-center">
+                <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Downloads</p>
+                <h2 className="mt-2 text-3xl font-bold">Downloaded PDFs</h2>
+              </div>
+              <div className="space-y-3">
+                {downloadHistory.length === 0 ? (
+                  <p className="rounded-2xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-400">
+                    No reports downloaded yet.
+                  </p>
+                ) : downloadHistory.map(item => (
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                    <p className="text-sm font-semibold">{item.fileName}</p>
+                    <p className="mt-1 text-xs text-slate-400">{new Date(item.date).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {drawerSection === 'dashboard' && (
           <MapContainer
           center={[19.42, 72.85]}
           zoom={12}
@@ -1506,6 +1738,8 @@ function Dashboard() {
         )}
 
         {/* Map overlay — stats */}
+        {drawerSection === 'dashboard' && (
+        <>
         <div className="absolute top-4 right-4 bg-sky-50/90 backdrop-blur rounded-lg p-3 z-[1000] shadow-sm border border-slate-200">
           <p className="text-xs text-slate-500">Active filters</p>
           <p className="text-sm font-bold text-slate-900">{filtered.length} zones visible</p>
@@ -1584,9 +1818,10 @@ function Dashboard() {
   if (!drawnGeoJSON) return
   setScanStatus({ active: true, progress: 'Initializing satellite scan...', jobId: null })
   
-  axios.post(`${API_BASE_URL}/zones/query`, drawnGeoJSON).then(res => {
+  api.post('/zones/query', drawnGeoJSON).then(res => {
     const jobId = res.data.job_id
     if (!jobId) return
+    void refreshSubscription()
     setScanStatus({ active: true, progress: 'Connecting to Google Earth Engine...', jobId })
 
     const poll = setInterval(() => {
@@ -1608,8 +1843,16 @@ function Dashboard() {
         }
       })
     }, 5000)
-  }).catch(() => {
-    setScanStatus({ active: false, progress: 'Request failed', jobId: null })
+  }).catch(error => {
+    if (isUpgradeRequiredError(error)) {
+      showUpgradePrompt(error, 'scan')
+    }
+
+    setScanStatus({
+      active: false,
+      progress: isUpgradeRequiredError(error) ? error.message : 'Request failed',
+      jobId: null,
+    })
   })
 }}
   className="px-3 py-2 rounded-md font-medium bg-blue-600 text-white hover:bg-blue-700"
@@ -1712,19 +1955,22 @@ function Dashboard() {
     </div>
   </div>
 )}
+        </>
+        )}
       </div>
     </div>
   )
 }
 
   function GeoJsonLayer({ data }: { data: any }) {
-    // simple component to render geojson via Leaflet layer
-    const map = (window as any).mapInstance as any
+    const map = useMap()
     useEffect(() => {
       if (!map) return
-      const layer = (window as any).L.geoJSON(data as any, { style: { color: '#3b82f6', weight: 2, fillOpacity: 0.05 } }).addTo(map)
-      return () => { map.removeLayer(layer) }
-    }, [data])
+      const layer = L.geoJSON(data as any, { style: { color: '#3b82f6', weight: 2, fillOpacity: 0.05 } }).addTo(map)
+      return () => {
+        try { map.removeLayer(layer) } catch {}
+      }
+    }, [data, map])
     return null
   }
 
@@ -1895,6 +2141,8 @@ function Dashboard() {
     const map = useMap()
     useEffect(() => {
       onCreated(map)
+      const timer = window.setTimeout(() => map.invalidateSize(), 80)
+      return () => window.clearTimeout(timer)
     }, [map, onCreated])
     return null
   }
