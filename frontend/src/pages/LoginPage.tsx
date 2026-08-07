@@ -30,9 +30,31 @@ export default function LoginPage() {
     event.preventDefault()
     setError('')
 
-    sessionStorage.setItem(SESSION_KEY, 'true')
-    sessionStorage.setItem(USER_KEY, JSON.stringify({ email, name: email }))
-    window.location.assign('/dashboard')
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Authentication failed.')
+      }
+
+      sessionStorage.setItem(SESSION_KEY, 'true')
+      if (data.access_token) {
+        sessionStorage.setItem(TOKEN_KEY, data.access_token)
+      }
+      if (data.user) {
+        sessionStorage.setItem(USER_KEY, JSON.stringify(data.user))
+      }
+
+      window.location.assign('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'Authentication failed.')
+    }
   }
 
   return (

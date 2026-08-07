@@ -53,7 +53,19 @@ api.interceptors.request.use(config => {
 
 api.interceptors.response.use(
   response => response,
-  error => Promise.reject(toUpgradeError(error) ?? error),
+  error => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('autosentinel.authenticated')
+        sessionStorage.removeItem('autosentinel.token')
+        sessionStorage.removeItem('autosentinel.user')
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login')
+        }
+      }
+    }
+    return Promise.reject(toUpgradeError(error) ?? error)
+  },
 )
 
 export function isUpgradeRequiredError(error: unknown): error is UpgradeRequiredError {
@@ -78,6 +90,17 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   }
 
   const response = await fetch(resolveApiUrl(path), { ...init, headers })
+
+  if (response.status === 401) {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('autosentinel.authenticated')
+      sessionStorage.removeItem('autosentinel.token')
+      sessionStorage.removeItem('autosentinel.user')
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login')
+      }
+    }
+  }
 
   if (!response.ok && (response.status === 402 || response.status === 403)) {
     const body = normalizeUpgradeBody(await response.clone().json().catch(() => null))

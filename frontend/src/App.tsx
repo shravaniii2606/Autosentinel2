@@ -706,6 +706,13 @@ function Dashboard() {
   }
 
   useEffect(() => {
+    const isAuth = sessionStorage.getItem('autosentinel.authenticated') === 'true'
+    const token = sessionStorage.getItem('autosentinel.token')
+    if (!isAuth || !token) {
+      window.location.assign('/login')
+      return
+    }
+
     try {
       const savedProfile = localStorage.getItem('autosentinel.profile')
       if (savedProfile) {
