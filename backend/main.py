@@ -119,6 +119,59 @@ app.add_middleware(
 
 app.include_router(auth_router)
 
+@app.on_event("startup")
+def init_db_on_startup():
+    try:
+        try:
+            from backend.database import Base, engine, SessionLocal
+            from backend.auth_utils import hash_password
+            from backend.models import User
+        except ImportError:
+            from database import Base, engine, SessionLocal
+            from auth_utils import hash_password
+            from models import User
+
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+        db = SessionLocal()
+        try:
+            email = "shravaniii2619@gmail.com"
+            user = db.query(User).filter(User.email == email).first()
+            if not user:
+                user = User(
+                    id="usr_admin_default",
+                    email=email,
+                    name="Shravani",
+                    role="admin",
+                    hashed_password=hash_password("Shravani"),
+                )
+                db.add(user)
+                db.commit()
+                print(f"[Startup DB] Created user: {email}")
+            elif not user.hashed_password:
+                user.hashed_password = hash_password("Shravani")
+                db.commit()
+                print(f"[Startup DB] Password initialized for user: {email}")
+        finally:
+            db.close()
+    except Exception as exc:
+        print(f"[Startup DB Warning] Auto-init skipped or failed: {exc}")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin") or "*"
+    print(f"[Unhandled Exception] {request.method} {request.url}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Methods": "*",
+        },
+    )
+
 app.mount(
     "/images",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), '..', 'data', 'images')),
