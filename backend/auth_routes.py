@@ -111,10 +111,33 @@ def get_current_user(
         ) from exc
 
     user = None
+    email = (payload.get("email") or "").strip().lower()
     try:
         user = db.get(User, str(user_id))
+        if not user and email:
+            user = db.query(User).filter(User.email == email).first()
     except Exception:
         db.rollback()
+
+    if not user and email:
+        try:
+            user = User(
+                id=str(user_id),
+                email=email,
+                name=email.split("@")[0].capitalize(),
+                role=payload.get("role", "user"),
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        except Exception:
+            db.rollback()
+            user = User(
+                id=str(user_id),
+                email=email,
+                name=email.split("@")[0].capitalize(),
+                role=payload.get("role", "user"),
+            )
 
     if not user:
         raise HTTPException(
