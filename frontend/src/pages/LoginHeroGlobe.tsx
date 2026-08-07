@@ -21,6 +21,7 @@ import * as THREE from 'three'
 const COLOR_BG = 0x05070a
 const COLOR_CYAN = 0x4fd8ff
 const COLOR_ORANGE = 0xff6b35
+const MIN_RENDER_SIZE = 1
 
 const DETECTION_LAT = 21.5 // India
 const DETECTION_LON = 78.5
@@ -158,8 +159,8 @@ export default function LoginHeroGlobe() {
 
     // --- resize handling ------------------------------------------------
     const resize = () => {
-      const w = mountEl.clientWidth
-      const h = mountEl.clientHeight
+      const w = Math.max(MIN_RENDER_SIZE, mountEl.clientWidth)
+      const h = Math.max(MIN_RENDER_SIZE, mountEl.clientHeight)
       renderer.setSize(w, h)
       camera.aspect = w / h
       camera.updateProjectionMatrix()
@@ -171,9 +172,11 @@ export default function LoginHeroGlobe() {
     // --- animation loop ---------------------------------------------------
     const clock = new THREE.Clock()
     let raf = 0
+    let disposed = false
     const worldMarkerPos = new THREE.Vector3()
 
     const animate = () => {
+      if (disposed) return
       raf = requestAnimationFrame(animate)
       const t = clock.getElapsedTime()
 
@@ -190,7 +193,6 @@ export default function LoginHeroGlobe() {
       satellite.lookAt(0, 0, 0)
 
       // marker's current world position (globe is rotating)
-      worldMarkerPos.copy(markerLocalPos).applyMatrix4(globeGroup.matrixWorld)
       globeGroup.updateMatrixWorld()
       worldMarkerPos.copy(markerLocalPos).applyMatrix4(globeGroup.matrixWorld)
 
@@ -218,19 +220,35 @@ export default function LoginHeroGlobe() {
 
       // keep the HTML overlay (cards + connecting lines) pinned to the
       // marker's projected screen position
-      const projected = worldMarkerPos.clone().project(camera)
       const w = mountEl.clientWidth
       const h = mountEl.clientHeight
+      const projected = worldMarkerPos.clone().project(camera)
+
+      if (
+        w <= 0 ||
+        h <= 0 ||
+        !Number.isFinite(projected.x) ||
+        !Number.isFinite(projected.y)
+      ) {
+        if (radarRef.current) radarRef.current.style.opacity = '0'
+        if (lineSvgRef.current) lineSvgRef.current.style.opacity = '0'
+        return
+      }
+
       const sx = (projected.x * 0.5 + 0.5) * w
       const sy = (-projected.y * 0.5 + 0.5) * h
 
+      if (!Number.isFinite(sx) || !Number.isFinite(sy)) return
+
       if (radarRef.current) {
+        radarRef.current.style.opacity = '1'
         radarRef.current.style.left = `${sx}px`
         radarRef.current.style.top = `${sy}px`
       }
 
       const svg = lineSvgRef.current
       if (svg) {
+        svg.style.opacity = '1'
         Object.entries(cardRefs.current).forEach(([id, el]) => {
           const line = svg.querySelector(`[data-line="${id}"]`) as SVGLineElement | null
           if (!el || !line) return
@@ -238,19 +256,23 @@ export default function LoginHeroGlobe() {
           const mountRect = mountEl.getBoundingClientRect()
           const cx = rect.left - mountRect.left + rect.width / 2
           const cy = rect.top - mountRect.top + rect.height / 2
-          line.setAttribute('x1', String(sx))
-          line.setAttribute('y1', String(sy))
-          line.setAttribute('x2', String(cx))
-          line.setAttribute('y2', String(cy))
+          if (![cx, cy].every(Number.isFinite)) return
+          line.setAttribute('x1', sx.toFixed(2))
+          line.setAttribute('y1', sy.toFixed(2))
+          line.setAttribute('x2', cx.toFixed(2))
+          line.setAttribute('y2', cy.toFixed(2))
         })
       }
     }
     animate()
 
     return () => {
+      disposed = true
       cancelAnimationFrame(raf)
       resizeObserver.disconnect()
-      mountEl.removeChild(renderer.domElement)
+      if (mountEl.contains(renderer.domElement)) {
+        mountEl.removeChild(renderer.domElement)
+      }
       ;[solidGlobe, gridGlobe, atmosphere, ringA, ringB, satBody, panelL, panelR, beam, marker, ...particles].forEach(
         (obj) => {
           obj.geometry?.dispose?.()

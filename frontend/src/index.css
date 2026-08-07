@@ -67,7 +67,7 @@
 .login-form input::placeholder { color: #72837f; }
 .login-form input:focus { border-color: #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,.15); }
 .login-form button { margin-top: .45rem; min-height: 3.4rem; cursor: pointer; border: 0; border-radius: .5rem; background: #fbbf24; color: #17201e; font-size: .77rem; font-weight: 950; letter-spacing: .1em; transition: transform .2s ease, background .2s ease, box-shadow .2s ease; }
-..login-form button:hover { transform: translateY(-3px) scale(1.015); background: #fff0b1; box-shadow: 0 16px 36px rgba(251,191,36,.34), 0 0 0 1px rgba(255,255,255,.35) inset; }
+.login-form button:hover { transform: translateY(-3px) scale(1.015); background: #fff0b1; box-shadow: 0 16px 36px rgba(251,191,36,.34), 0 0 0 1px rgba(255,255,255,.35) inset; }
 .login-form button span { margin-left: .6rem; font-size: 1.2rem; vertical-align: -1px; }
 .login-auth-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin-top: 2rem; }
 .login-auth-switch button { min-height: 3rem; border: 1px solid rgba(255,255,255,.12); border-radius: .75rem; background: rgba(255,255,255,.04); color: #d8e4e1; font-weight: 800; letter-spacing: .08em; transition: background .2s ease, color .2s ease; }
@@ -100,6 +100,8 @@
 .google-btn { display: flex; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; min-height: 3.2rem; border-radius: 0.5rem; border: 1px solid rgba(255, 255, 255, 0.18) !important; background: rgba(255, 255, 255, 0.08) !important; color: white !important; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s ease; margin-top: 0 !important; }
 .google-btn:hover { background: rgba(255, 255, 255, 0.15) !important; border-color: rgba(255, 255, 255, 0.35) !important; transform: translateY(-2px) !important; box-shadow: none !important; }
 .google-btn svg { width: 1.25rem; height: 1.25rem; }
+.google-btn-disabled, .google-btn-disabled:hover { cursor: default; transform: none !important; background: rgba(255, 255, 255, 0.06) !important; border-color: rgba(255, 255, 255, 0.12) !important; }
+.google-unavailable { color: rgba(255, 255, 255, 0.62); font-size: 0.72rem; letter-spacing: 0.08em; }
 .login-toggle-text { margin-top: 1rem; text-align: center; color: #a9bab6; font-size: 0.82rem; }
 .login-toggle-link { color: #fbbf24 !important; font-weight: 700; cursor: pointer; text-decoration: underline; background: transparent !important; border: none !important; padding: 0 0.25rem !important; font: inherit !important; min-height: auto !important; margin: 0 !important; transform: none !important; box-shadow: none !important; }
 .login-toggle-link:hover { color: #fff0b1 !important; transform: none !important; background: transparent !important; box-shadow: none !important; }

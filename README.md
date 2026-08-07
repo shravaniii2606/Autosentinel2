@@ -125,6 +125,17 @@ npm run dev
 
 The dashboard expects the backend running at `http://localhost:8000`.
 
+For deployed auth, set these environment variables before building:
+
+- Frontend/Vercel: `VITE_API_BASE_URL=https://your-render-api.onrender.com`
+- Frontend/Vercel: `VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com`
+- Backend/Render: `GOOGLE_CLIENT_ID` with the same client ID
+- Backend/Render: `FRONTEND_URL=https://your-vercel-app.vercel.app` or add it to `CORS_ORIGINS`
+
+In Google Cloud Console, the OAuth web client must also list the deployed
+frontend URL, for example `https://nirikshan2-ktqj.vercel.app`, under
+Authorized JavaScript origins.
+
 ## Core API endpoints
 
 | Endpoint | Description |

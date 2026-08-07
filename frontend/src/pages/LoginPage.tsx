@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google'
 import LoginHeroGlobe from '../pages/LoginHeroGlobe'
-import { API_BASE_URL } from '../config'
+import { API_BASE_URL, GOOGLE_CLIENT_ID } from '../config'
 
 const SESSION_KEY = 'autosentinel.authenticated'
 const TOKEN_KEY = 'autosentinel.token'
@@ -12,6 +12,7 @@ export function isAuthenticated() {
 }
 
 export default function LoginPage() {
+  const isGoogleConfigured = GOOGLE_CLIENT_ID.length > 0
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -20,6 +21,8 @@ export default function LoginPage() {
   const [googleEmail, setGoogleEmail] = useState('')
   const [googlePassword, setGooglePassword] = useState('')
   const [showGoogleSignup, setShowGoogleSignup] = useState(false)
+  const googleButtonRef = useRef<HTMLDivElement>(null)
+  const [googleButtonWidth, setGoogleButtonWidth] = useState(320)
 
   const clearAuthState = () => {
     sessionStorage.removeItem(SESSION_KEY)
@@ -30,6 +33,24 @@ export default function LoginPage() {
   useEffect(() => {
     clearAuthState()
     setError('')
+  }, [])
+
+  useEffect(() => {
+    const buttonEl = googleButtonRef.current
+    if (!buttonEl) return
+
+    const updateButtonWidth = () => {
+      const measuredWidth = Math.floor(buttonEl.clientWidth || 320)
+      setGoogleButtonWidth(Math.min(400, Math.max(200, measuredWidth)))
+    }
+
+    updateButtonWidth()
+    const resizeObserver = new ResizeObserver(updateButtonWidth)
+    resizeObserver.observe(buttonEl)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
   }, [])
 
   const decodeGoogleProfile = (credential: string) => {
@@ -176,7 +197,7 @@ export default function LoginPage() {
   }
 
   const handleGoogleError = () => {
-    setError('Google sign-in was cancelled or failed. Please try again.')
+    setError('Google sign-in failed. Check the OAuth client ID and authorized origin for this domain.')
   }
 
   return (
@@ -202,14 +223,18 @@ export default function LoginPage() {
         </div>
 
         <div className="login-form">
-          <div className="google-btn" style={{ width: '100%' }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              text="signin_with"
-              shape="rectangular"
-              width="100%"
-            />
+          <div ref={googleButtonRef} className="google-btn" style={{ width: '100%' }}>
+            {isGoogleConfigured ? (
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text="signin_with"
+                shape="rectangular"
+                width={googleButtonWidth}
+              />
+            ) : (
+              <span className="google-unavailable">GOOGLE SIGN-IN NOT CONFIGURED</span>
+            )}
           </div>
 
           <div className="login-divider">

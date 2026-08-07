@@ -6,10 +6,14 @@ import App from './App.tsx'
 import '@google/model-viewer';
 import { GOOGLE_CLIENT_ID } from './config'
 
+const app = <App />
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <App />
-    </GoogleOAuthProvider>
+    {GOOGLE_CLIENT_ID ? (
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>{app}</GoogleOAuthProvider>
+    ) : (
+      app
+    )}
   </StrictMode>,
 )

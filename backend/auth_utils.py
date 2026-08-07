@@ -120,12 +120,14 @@ def verify_google_token(token: str) -> dict[str, Any]:
             "picture": "https://lh3.googleusercontent.com/a/default-user=s96-c",
         }
 
+    if not GOOGLE_CLIENT_ID or "REPLACE_ME" in GOOGLE_CLIENT_ID:
+        raise ValueError("GOOGLE_CLIENT_ID is not configured in the backend environment")
+
     try:
-        audience = GOOGLE_CLIENT_ID if GOOGLE_CLIENT_ID and "REPLACE_ME" not in GOOGLE_CLIENT_ID else None
         id_info = google_id_token.verify_oauth2_token(
             token,
             google_requests.Request(),
-            audience=audience,
+            audience=GOOGLE_CLIENT_ID,
         )
         return {
             "sub": id_info.get("sub"),

@@ -145,97 +145,116 @@ def auth_google(
             detail=f"Google authentication failed: {exc}",
         ) from exc
 
-    email = profile["email"].strip().lower()
-    google_sub = profile["sub"]
-    requested_name = (payload.name or profile.get("name") or "").strip()
-    requested_password = (payload.password or "").strip()
+    try:
+        email = (profile.get("email") or "").strip().lower()
+        google_sub = (profile.get("sub") or "").strip()
+        if not email or not google_sub:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Google profile is missing a verified email or subject ID.",
+            )
 
-    # Check for existing user by email or ID
-    user = db.query(User).filter((User.email == email) | (User.id == google_sub)).first()
-    needs_password_setup = False
+        requested_name = (payload.name or profile.get("name") or "").strip()
+        requested_password = (payload.password or "").strip()
 
-    if not user:
-        # Create the account record first. If the user is signing in with Google for the first time,
-        # we require a password setup step so they can log in later with email/password.
-        generated_password = f"google-{email.split('@')[0]}-{google_sub[-6:]}"
-        user = User(
-            id=google_sub or f"usr_{uuid.uuid4().hex[:12]}",
-            email=email,
-            name=requested_name or email.split("@")[0].capitalize(),
-            picture=profile.get("picture"),
-            role="user",
-            hashed_password=hash_password(generated_password),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-        needs_password_setup = True
+        # Check for existing user by email or ID
+        user = db.query(User).filter((User.email == email) | (User.id == google_sub)).first()
+        needs_password_setup = False
 
-        if requested_password:
-            user.hashed_password = hash_password(requested_password)
-            needs_password_setup = False
+        if not user:
+            # Create the account record first. If the user is signing in with Google for the first time,
+            # we require a password setup step so they can log in later with email/password.
+            generated_password = f"google-{email.split('@')[0]}-{google_sub[-6:]}"
+            user = User(
+                id=google_sub or f"usr_{uuid.uuid4().hex[:12]}",
+                email=email,
+                name=requested_name or email.split("@")[0].capitalize(),
+                picture=profile.get("picture"),
+                role="user",
+                hashed_password=hash_password(generated_password),
+            )
+            db.add(user)
             db.commit()
-    else:
-        # Update user profile info if changed
-        if requested_name and user.name != requested_name:
-            user.name = requested_name
-        if profile.get("name") and user.name != profile.get("name"):
-            user.name = profile.get("name")
-        if profile.get("picture") and user.picture != profile.get("picture"):
-            user.picture = profile.get("picture")
-
-        if requested_password:
-            if not user.hashed_password:
-                user.hashed_password = hash_password(requested_password)
-            elif not verify_password(requested_password, user.hashed_password):
-                user.hashed_password = hash_password(requested_password)
-            needs_password_setup = False
-
-        if not user.hashed_password:
+            db.refresh(user)
             needs_password_setup = True
-        elif requested_password:
-            needs_password_setup = False
 
+            if requested_password:
+                user.hashed_password = hash_password(requested_password)
+                needs_password_setup = False
+                db.commit()
+        else:
+            # Update user profile info if changed
+            if requested_name and user.name != requested_name:
+                user.name = requested_name
+            if profile.get("name") and user.name != profile.get("name"):
+                user.name = profile.get("name")
+            if profile.get("picture") and user.picture != profile.get("picture"):
+                user.picture = profile.get("picture")
+
+            if requested_password:
+                if not user.hashed_password:
+                    user.hashed_password = hash_password(requested_password)
+                elif not verify_password(requested_password, user.hashed_password):
+                    user.hashed_password = hash_password(requested_password)
+                needs_password_setup = False
+
+            if not user.hashed_password:
+                needs_password_setup = True
+            elif requested_password:
+                needs_password_setup = False
+
+            db.commit()
+
+        # Issue JWT access & refresh tokens
+        access_token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
+        raw_refresh_token, expires_at = create_refresh_token(user.id)
+
+        # Persist refresh token in DB
+        ref_record = RefreshToken(
+            id=f"ref_{uuid.uuid4().hex[:16]}",
+            user_id=user.id,
+            token=raw_refresh_token,
+            expires_at=expires_at,
+            revoked=False,
+        )
+        db.add(ref_record)
         db.commit()
 
-    # Issue JWT access & refresh tokens
-    access_token = create_access_token({"sub": user.id, "email": user.email, "role": user.role})
-    raw_refresh_token, expires_at = create_refresh_token(user.id)
+        # Set secure HTTP-only cookies
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            samesite="lax",
+            secure=False,  # Set to True in production HTTPS
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=raw_refresh_token,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+        )
 
-    # Persist refresh token in DB
-    ref_record = RefreshToken(
-        id=f"ref_{uuid.uuid4().hex[:16]}",
-        user_id=user.id,
-        token=raw_refresh_token,
-        expires_at=expires_at,
-        revoked=False,
-    )
-    db.add(ref_record)
-    db.commit()
-
-    # Set secure HTTP-only cookies
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,  # Set to True in production HTTPS
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=raw_refresh_token,
-        httponly=True,
-        samesite="lax",
-        secure=False,
-    )
-
-    return {
-        "access_token": access_token,
-        "refresh_token": raw_refresh_token,
-        "token_type": "bearer",
-        "user": user.to_dict(),
-        "needs_password_setup": needs_password_setup,
-    }
+        return {
+            "access_token": access_token,
+            "refresh_token": raw_refresh_token,
+            "token_type": "bearer",
+            "user": user.to_dict(),
+            "needs_password_setup": needs_password_setup,
+        }
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=(
+                "Google authentication could not be completed on the server. "
+                "Check DATABASE_URL, migrations, and GOOGLE_CLIENT_ID in the backend deployment."
+            ),
+        ) from exc
 
 
 @router.post("/refresh")

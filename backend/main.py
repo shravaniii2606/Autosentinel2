@@ -67,13 +67,47 @@ except ImportError:
     from models import User, RefreshToken, Zone
     from subscription import FREE_SCAN_LIMIT, can_scan, is_subscribed, scans_remaining
 
+
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://nirikshan2-ktqj.vercel.app",
+)
+
+
+def _split_env_list(raw_value: str) -> list[str]:
+    return [
+        item.strip().rstrip("/")
+        for item in raw_value.replace(";", ",").split(",")
+        if item.strip()
+    ]
+
+
+def get_cors_origins() -> list[str]:
+    origins = list(DEFAULT_CORS_ORIGINS)
+    for env_name in ("CORS_ORIGINS", "FRONTEND_ORIGINS", "FRONTEND_URL", "VERCEL_URL"):
+        raw_value = os.getenv(env_name, "").strip()
+        if not raw_value:
+            continue
+
+        for origin in _split_env_list(raw_value):
+            if env_name == "VERCEL_URL" and not origin.startswith(("http://", "https://")):
+                origin = f"https://{origin}"
+            if origin not in origins:
+                origins.append(origin)
+    return origins
+
+
 app = FastAPI()
 
 app.include_router(auth_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_cors_origins(),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
