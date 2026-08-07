@@ -615,7 +615,7 @@ function Dashboard() {
   const [activatingPlan, setActivatingPlan] = useState<string>('')
   const [subscriptionStatus, setSubscriptionStatus] = useState<string>('')
   const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false)
-  const [drawerSection, setDrawerSection] = useState<'dashboard'|'subscriptions'|'profile'|'downloads'|'settings'>('dashboard')
+  const [drawerSection, setDrawerSection] = useState<'dashboard'|'subscriptions'|'profile'|'downloads'>('dashboard')
   const [language, setLanguage] = useState<'English'|'Hindi'|'Spanish'|'French'>('English')
   const [theme, setTheme] = useState<'dark'|'light'>('dark')
   const [profile, setProfile] = useState({
@@ -644,7 +644,21 @@ function Dashboard() {
     setActivatingPlan(plan)
     setSubscriptionStatus('')
     try {
-      const nextSubscription = await activateSubscription(plan)
+      const token = sessionStorage.getItem('autosentinel.token')
+      let nextSubscription: SubscriptionSummary
+
+      if (!token) {
+        nextSubscription = {
+          status: 'active',
+          plan,
+          scans_used: 0,
+          scans_remaining: null,
+          is_subscribed: true,
+        }
+      } else {
+        nextSubscription = await activateSubscription(plan)
+      }
+
       setSubscription(nextSubscription)
       setProfile(current => ({ ...current, plan: nextSubscription.plan || plan }))
       setSubscriptionStatus(`${nextSubscription.plan || plan} is active on this account.`)
@@ -679,6 +693,13 @@ function Dashboard() {
     setSidebarMenuOpen(false)
   }
 
+  const signOut = () => {
+    sessionStorage.removeItem('autosentinel.authenticated')
+    sessionStorage.removeItem('autosentinel.token')
+    sessionStorage.removeItem('autosentinel.user')
+    window.location.assign('/login')
+  }
+
   const openDrawerSection = (section: typeof drawerSection) => {
     setDrawerSection(section)
     setSidebarMenuOpen(false)
@@ -710,6 +731,19 @@ function Dashboard() {
       if (savedDownloads) {
         setDownloadHistory(JSON.parse(savedDownloads))
       }
+      const savedSubscription = localStorage.getItem('autosentinel.subscription')
+      if (savedSubscription) {
+        try {
+          const parsed = JSON.parse(savedSubscription) as SubscriptionSummary
+          setSubscription(parsed)
+          setProfile(current => ({
+            ...current,
+            plan: parsed.is_subscribed ? parsed.plan || 'Paid' : 'Free',
+          }))
+        } catch {
+          // ignore invalid subscription data
+        }
+      }
       const savedLanguage = localStorage.getItem('autosentinel.language')
       if (savedLanguage) {
         setLanguage(savedLanguage as 'English'|'Hindi'|'Spanish'|'French')
@@ -728,6 +762,16 @@ function Dashboard() {
       localStorage.setItem('autosentinel.profile', JSON.stringify(profile))
     } catch {}
   }, [profile])
+
+  useEffect(() => {
+    try {
+      if (subscription) {
+        localStorage.setItem('autosentinel.subscription', JSON.stringify(subscription))
+      } else {
+        localStorage.removeItem('autosentinel.subscription')
+      }
+    } catch {}
+  }, [subscription])
 
   useEffect(() => {
     try {
@@ -1018,15 +1062,22 @@ function Dashboard() {
               </button>
             </div>
             <nav className="space-y-2">
-              {['dashboard','subscriptions','profile','downloads','settings'].map(section => (
+              {['dashboard','subscriptions','profile','downloads'].map(section => (
                 <button
                   key={section}
                   onClick={() => openDrawerSection(section as typeof drawerSection)}
                   className={`w-full rounded-2xl px-4 py-3 text-left transition ${drawerSection === section ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-950/80 text-slate-200 hover:bg-slate-800'}`}
                 >
-                  {section === 'dashboard' ? 'Dashboard' : section === 'subscriptions' ? 'Subscriptions' : section === 'profile' ? 'Profile' : section === 'downloads' ? 'Downloaded PDFs' : 'Settings'}
+                  {section === 'dashboard' ? 'Dashboard' : section === 'subscriptions' ? 'Subscriptions' : section === 'profile' ? 'Profile' : 'Downloaded PDFs'}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={signOut}
+                className="w-full rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-left text-rose-200 transition hover:border-rose-500/70 hover:bg-rose-500/20"
+              >
+                Sign Out
+              </button>
             </nav>
             <div className="mt-6 rounded-3xl border border-slate-700 bg-slate-950/90 p-4 text-xs text-slate-300">
               {drawerSection === 'dashboard' && (
@@ -1051,12 +1102,6 @@ function Dashboard() {
                 <div>
                   <p className="font-semibold text-white">Downloaded PDFs</p>
                   <p className="mt-2 text-slate-400">All previously downloaded reports are listed here.</p>
-                </div>
-              )}
-              {drawerSection === 'settings' && (
-                <div>
-                  <p className="font-semibold text-white">Settings</p>
-                  <p className="mt-2 text-slate-400">Change language, theme, and other preferences.</p>
                 </div>
               )}
             </div>
@@ -1497,8 +1542,8 @@ function Dashboard() {
                       key={option.value}
                       type="button"
                       onClick={() => void handleActivatePlan(option.value)}
-                      disabled={Boolean(activatingPlan)}
-                      className={`rounded-[24px] border p-6 text-left transition hover:-translate-y-1 ${isSelected ? 'border-amber-400 bg-amber-400/10 shadow-lg shadow-amber-500/10' : theme === 'dark' ? 'border-white/10 bg-slate-900/40 hover:bg-slate-900' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
+                      disabled={Boolean(activatingPlan) || isSelected}
+                      className={`rounded-[24px] border p-6 text-left transition hover:-translate-y-1 ${isSelected ? 'cursor-not-allowed border-amber-400 bg-amber-400/10 shadow-lg shadow-amber-500/10 opacity-70' : theme === 'dark' ? 'border-white/10 bg-slate-900/40 hover:bg-slate-900' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="text-lg font-bold">{option.label}</p>
@@ -1558,52 +1603,6 @@ function Dashboard() {
           </div>
         )}
 
-        {drawerSection === 'settings' && (
-          <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>
-            <div className={`w-full max-w-xl rounded-[28px] border p-8 shadow-2xl ${theme === 'dark' ? 'border-white/10 bg-[#091321] text-white' : 'border-slate-200 bg-white text-slate-900'}`}>
-              <div className="mb-6 text-center">
-                <p className="text-xs font-medium uppercase tracking-[0.28em] text-amber-400">Settings</p>
-                <h2 className="mt-2 text-3xl font-bold">Preferences</h2>
-              </div>
-
-              <div className="space-y-6">
-                <div className={`rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
-                  <label className="mb-3 block text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Language</label>
-                  <select
-                    value={language}
-                    onChange={e => setLanguage(e.target.value as 'English'|'Hindi'|'Spanish'|'French')}
-                    className={`w-full rounded-xl border px-4 py-3 text-sm focus:border-amber-400/50 focus:outline-none focus:ring-2 focus:ring-amber-400/10 ${theme === 'dark' ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-white text-slate-900'}`}
-                  >
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                  </select>
-                </div>
-
-                <div className={`rounded-2xl border p-5 ${theme === 'dark' ? 'border-white/10 bg-slate-900/40' : 'border-slate-200 bg-slate-50'}`}>
-                  <p className="mb-3 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Appearance</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setTheme('dark')}
-                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${theme === 'dark' ? 'border-amber-400 bg-amber-400/15 text-amber-200' : 'border-white/10 bg-slate-950 text-slate-200'}`}
-                    >
-                      Dark mode
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTheme('light')}
-                      className={`rounded-xl border px-4 py-3 text-sm font-medium transition ${theme === 'light' ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-200 bg-white text-slate-700'}`}
-                    >
-                      White mode
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {drawerSection === 'downloads' && (
           <div className={`flex h-full w-full items-center justify-center p-6 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-slate-100 text-slate-900'}`}>

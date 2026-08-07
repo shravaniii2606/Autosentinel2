@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 import os
 import threading
-from typing import Iterable
+from typing import Any, Iterable
 
 _client = None
 _client_lock = threading.Lock()
@@ -138,3 +138,23 @@ def fetch_zones(source: str | None = None, limit: int = 5000) -> list[dict]:
 def delete_zone(zone_id: str) -> None:
     client = get_supabase_client()
     client.table("zones").delete().eq("id", str(zone_id)).execute()
+
+
+def _to_user_row(user: Any) -> dict:
+    return {
+        "id": str(getattr(user, "id", "")),
+        "email": getattr(user, "email", ""),
+        "name": getattr(user, "name", None),
+        "role": getattr(user, "role", "user"),
+        "subscription_status": getattr(user, "subscription_status", "free"),
+        "subscription_plan": getattr(user, "subscription_plan", None),
+        "subscribed_at": getattr(user, "subscribed_at", None).isoformat() if getattr(user, "subscribed_at", None) else None,
+        "scans_used": int(getattr(user, "scans_used", 0) or 0),
+    }
+
+
+def upsert_user_subscription(user: Any) -> bool:
+    client = get_supabase_client()
+    row = _to_user_row(user)
+    client.table("users").upsert(row, on_conflict="id").execute()
+    return True

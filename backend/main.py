@@ -51,11 +51,16 @@ except ImportError:
     from db_client import upsert_zones, fetch_zones
 
 try:
-    from backend.supabase_client import upsert_zones as _supa_upsert, fetch_zones as _supa_fetch
+    from backend.supabase_client import (
+        upsert_zones as _supa_upsert,
+        fetch_zones as _supa_fetch,
+        upsert_user_subscription as _supa_upsert_user,
+    )
     _supabase_available = True
 except Exception:
     _supa_upsert = None
     _supa_fetch = None
+    _supa_upsert_user = None
 try:
     from backend.auth_routes import router as auth_router, get_current_user
     from backend.database import get_db
@@ -107,9 +112,11 @@ app.include_router(auth_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
+    allow_origin_regex=r"https?://localhost(:[0-9]+)?|https?://127\.0\.0\.1(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 app.mount(
@@ -193,6 +200,12 @@ async def activate_subscription(
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
+
+    if _supabase_available and _supa_upsert_user is not None:
+        try:
+            _supa_upsert_user(current_user)
+        except Exception as exc:
+            print(f"[Supabase] Failed to persist subscription for user {current_user.id}: {exc}")
 
     return subscription_payload(current_user)
 
