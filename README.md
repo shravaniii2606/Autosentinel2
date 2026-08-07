@@ -1,6 +1,6 @@
-# AutoSentinel
+# Nirikshan
 
-Satellite-based illegal construction detection system. AutoSentinel compares
+Satellite-based illegal construction detection system. Nirikshan compares
 Sentinel-2 satellite imagery year-over-year to flag new construction, scores
 each flagged zone by severity and legal risk, and gives field officers a map
 dashboard to investigate, scan new areas on demand, generate reports, and ask
@@ -51,7 +51,7 @@ for OpenAI-compatible assistant chat, and Gnani.ai (voice input/output).
 ## Project structure
 
 ```
-autosentinel/
+nirikshan/
 ├── backend/
 │   ├── main.py               # FastAPI app — all API endpoints
 │   ├── gee_auth.py           # Earth Engine authentication (service account or local OAuth)
