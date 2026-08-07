@@ -1,93 +1,96 @@
-# Nirikshan
+# Nirikshan — Satellite-Based Intelligence & Illegal Construction Detection
 
-Satellite-based illegal construction detection system. Nirikshan compares
-Sentinel-2 satellite imagery year-over-year to flag new construction, scores
-each flagged zone by severity and legal risk, and gives field officers a map
-dashboard to investigate, scan new areas on demand, generate reports, and ask
-an AI assistant natural-language questions about any flagged zone.
+Nirikshan is an AI-powered satellite monitoring and legal compliance portal. It compares year-over-year Sentinel-2 satellite imagery to detect unauthorized land changes, validates construction activity with vision models, cross-references land-use datasets, and provides field officers with an interactive command center, PDF report generation, and an AI compliance assistant.
 
 **Team DOMinators**
 - Shravani Chaudhary
 - Mitanshi Khanna
 - Shravani Kolekar
 
-<img width="1892" height="801" alt="image" src="https://github.com/user-attachments/assets/0795cc4c-bfed-44ff-9d60-1248350de0e2" />
+<img width="1892" height="801" alt="Nirikshan Operations Portal" src="https://github.com/user-attachments/assets/0795cc4c-bfed-44ff-9d60-1248350de0e2" />
 
-## How it works
+---
 
-1. **Detect** — Sentinel-2 SR composites (via Google Earth Engine) for two
-   time periods are compared using NDBI (Normalized Difference Built-up
-   Index). Areas where NDBI increases beyond a threshold are flagged as
-   likely new construction.
-2. **Verify with vision** — Before/after satellite thumbnails are run through
-   a YOLO object-detection model to confirm construction activity (cranes,
-   buildings, containers), adding a vision-based confidence score on top of
-   the raw change detection.
-3. **Score** — Each flagged polygon is scored by area and assigned a severity
-   (LOW / MEDIUM / HIGH / CRITICAL).
-4. **Cross-reference** — Zones are checked against OpenStreetMap (OSM) land-use
-   layers (forest, agricultural, protected land) and Microsoft's global
-   building footprints dataset to flag legal risk and confirm whether a real
-   structure exists.
-5. **Report & ask** — Officers get a live map dashboard, a downloadable PDF
-   report per zone with the legal explanation, and can ask the AI assistant
-   questions like *"why is this zone high risk?"* and get an answer grounded
-   in the actual scan data.
+## Live Deployments
 
-## Tech stack
+- **Frontend Application (Vercel)**: [https://nirikshan2-ktqj.vercel.app](https://nirikshan2-ktqj.vercel.app)
+- **Backend API Server (Render)**: [https://autosentinel2-1.onrender.com](https://autosentinel2-1.onrender.com)
 
-**Backend** — Python, FastAPI, Google Earth Engine (`earthengine-api`),
-`rasterio` / `geopandas` for geospatial processing, `shapely` for geometry,
-YOLO for vision-based construction detection on satellite thumbnails.
+---
 
-**Frontend** — React 19, TypeScript, Vite, Tailwind CSS v4, Leaflet
-(`react-leaflet` + `leaflet-draw`) for the interactive map.
+## How It Works
 
-**Data & AI** — Google Earth Engine (Sentinel-2 imagery), OpenStreetMap
-(land-use + natural feature layers via Overpass/OSMnx), Microsoft Building
-Footprints (structure verification), Supabase (zone persistence), OpenRouter
-for OpenAI-compatible assistant chat, and Gnani.ai (voice input/output).
+1. **Change Detection** — Sentinel-2 SR surface reflectance composites (via Google Earth Engine) across multiple time periods are analyzed using NDBI (Normalized Difference Built-up Index). Areas showing abnormal NDBI increases are flagged as target zones.
+2. **Vision-Based Verification** — Before/after satellite thumbnails are evaluated by a YOLO object-detection model to identify construction indicators (cranes, building frames, containers) and generate a vision confidence score.
+3. **Severity & Risk Scoring** — Polygons are classified into severity levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) based on detected area, proximity to infrastructure, and structural changes.
+4. **Spatial & Legal Cross-Referencing** — Zones are cross-referenced with OpenStreetMap (OSM) layers (forests, water bodies, protected lands), Bhuvan land-use datasets, and Microsoft Building Footprints to determine legal compliance and confirm physical structures.
+5. **Command Center & Intelligence** — Officers can search regions, draw custom bounding boxes for live scanning, download PDF inspection reports, and interact with an AI compliance assistant via text or voice.
 
-## Project structure
+---
+
+## Tech Stack
+
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Leaflet (`react-leaflet` + `leaflet-draw`).
+- **Backend**: Python, FastAPI, SQLAlchemy ORM, Alembic, PostgreSQL, Google Earth Engine (`earthengine-api`), `rasterio`, `geopandas`, `shapely`.
+- **Auth & Security**: JWT Access & Refresh Tokens, bcrypt password hashing, CORS middleware.
+- **Data & AI**: Google Earth Engine (Sentinel-2), OpenStreetMap (Overpass / OSMnx), Microsoft Building Footprints, OpenRouter (AI assistant), Gnani.ai (voice input/output).
+
+---
+
+## Project Structure
 
 ```
-nirikshan/
+Autosentinel2/
 ├── backend/
-│   ├── main.py               # FastAPI app — all API endpoints
-│   ├── gee_auth.py           # Earth Engine authentication (service account or local OAuth)
-│   ├── supabase_client.py    # Zone persistence in Supabase
+│   ├── main.py               # FastAPI app, CORS middleware, and primary API routes
+│   ├── auth_routes.py        # Authentication router (/auth/login, /auth/me, /auth/refresh)
+│   ├── auth_utils.py         # JWT token creation/decoding and bcrypt password hashing
+│   ├── database.py           # PostgreSQL SQLAlchemy engine and session factory
+│   ├── models.py             # SQLAlchemy models (User, RefreshToken, Zone)
+│   ├── db_client.py          # PostgreSQL zone query & upsert client
+│   ├── seed_db.py            # Seed database with zone data
+│   ├── seed_user.py          # Seed default admin user credentials
+│   ├── gee_auth.py           # Earth Engine authentication logic
 │   ├── assistant.py          # OpenRouter-backed AI assistant helpers
-│   ├── gnani_client.py       # Voice input/output (Gnani.ai)
+│   ├── subscription.py       # Feature gating and scan limit checks
 │   └── requirements.txt
 ├── frontend/
-│   └── src/
-│       ├── App.tsx           # Main map dashboard
-│       └── main.tsx
+│   ├── src/
+│   │   ├── App.tsx           # Main map dashboard and interactive command center
+│   │   ├── main.tsx          # Application entry point
+│   │   ├── config.ts         # Base API URL and environment configurations
+│   │   ├── lib/api.ts        # Axios API client, auth interceptors, and error handling
+│   │   └── pages/
+│   │       ├── LoginPage.tsx # Secure Email & Password Login Page
+│   │       ├── LandingPage.tsx
+│   │       └── LoginHeroGlobe.tsx
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── .env
 ├── notebooks/
 │   ├── run_pipeline.py            # End-to-end NDBI change detection pipeline
-│   ├── process_change.py          # Vectorize + score change-detection output
-│   ├── score_zones.py             # Severity / risk scoring logic
-│   ├── legal_cross_reference.py   # Spatial join against land-use + OSM layers
-│   ├── fetch_bhuvan_lulc.py       # Local land-use extract for a study area
-│   ├── fetch_osm_layers.py        # Live OSM/Overpass layers (rivers, forests, etc.)
-│   ├── generate_report.py         # Per-zone PDF report generation
-│   └── train_classifier*.py       # YOLO-detection-fed XGBoost risk classifiers
-├── data/
-│   ├── flagged_zones.json             # Precomputed dataset of flagged zones
-│   ├── zoned_violations_enriched.geojson
-│   └── live_zones.json                # Zones from user-drawn live scans (persisted)
-└── docs/
-    └── dahisar-landuse.md
+│   ├── process_change.py          # Vectorize & score change-detection output
+│   ├── score_zones.py             # Severity & risk scoring logic
+│   ├── legal_cross_reference.py   # Spatial join against land-use & OSM layers
+│   ├── fetch_bhuvan_lulc.py       # Bhuvan land-use extract generator
+│   ├── fetch_osm_layers.py        # Live OSM/Overpass layer extractor
+│   └── generate_report.py         # PDF report generator
+└── data/
+    ├── flagged_zones.json         # Precomputed flagged zones dataset
+    └── live_zones.json            # Persisted live scan result zones
 ```
 
-## Setup
+---
 
-### Backend
+## Getting Started Locally
+
+### 1. Backend Setup
 
 ```bash
 cd backend
 python -m venv venv
-# Windows:
+
+# Windows (PowerShell):
 .\venv\Scripts\Activate.ps1
 # macOS/Linux:
 source venv/bin/activate
@@ -95,78 +98,94 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Copy `.env.example` to `.env` and fill in your credentials (Earth Engine,
-Supabase, OpenRouter, Gnani.ai):
+Create a `backend/.env` file:
 
-```bash
-cp .env.example .env
+```env
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/autosentinel
+JWT_SECRET_KEY=autosentinel_super_secret_jwt_key_2026
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=7
+OPENROUTER_API_KEY=your_openrouter_api_key
 ```
 
-For **local development**, run `earthengine authenticate` once and the
-backend will use your local OAuth session. For **deployment**, set
-`GEE_SERVICE_ACCOUNT_EMAIL` and `GEE_SERVICE_ACCOUNT_KEY` (a GCP service
-account JSON key, as a single-line env var) instead — see `gee_auth.py`.
+Seed the default database tables and user credentials:
 
-Run the server:
+```bash
+python backend/seed_user.py
+```
+
+Run the backend development server:
 
 ```bash
 uvicorn main:app --reload
 ```
 
-API docs are available at `http://localhost:8000/docs` once running.
+Interactive API Documentation: `http://localhost:8000/docs`
 
-### Frontend
+---
+
+### 2. Frontend Setup
 
 ```bash
 cd frontend
 npm install
+```
+
+Create a `frontend/.env` file:
+
+```env
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+Start the Vite development server:
+
+```bash
 npm run dev
 ```
 
-The dashboard expects the backend running at `http://localhost:8000`.
+Application will run locally at `http://localhost:5173`.
 
-For deployed auth, set these environment variables before building:
+---
 
-- Frontend/Vercel: `VITE_API_BASE_URL=https://your-render-api.onrender.com`
-- Frontend/Vercel: `VITE_GOOGLE_CLIENT_ID=...apps.googleusercontent.com`
-- Backend/Render: `GOOGLE_CLIENT_ID` with the same client ID
-- Backend/Render: `FRONTEND_URL=https://your-vercel-app.vercel.app` or add it to `CORS_ORIGINS`
+## Default Test Credentials
 
-In Google Cloud Console, the OAuth web client must also list the deployed
-frontend URL, for example `https://nirikshan2-ktqj.vercel.app`, under
-Authorized JavaScript origins.
+For local testing or portal access:
+- **Email**: `shravaniii2619@gmail.com`
+- **Password**: `Shravani`
 
-## Core API endpoints
+---
 
-| Endpoint | Description |
-|---|---|
-| `GET /zones` | All flagged zones (precomputed + live) |
-| `GET /zones/summary` | Summary counts by severity |
-| `GET /zones/{id}` | Single zone detail |
-| `GET /zones/{id}/images` | Before/after satellite thumbnails |
-| `GET /zones/{id}/report` | Downloadable PDF report |
-| `POST /scan` | Kick off a live scan for a user-drawn area (returns a `job_id`) |
-| `GET /jobs/{job_id}` | Poll status of a running scan job |
-| `POST /assistant/ask` | Ask the AI assistant a question about a zone (text or voice) |
-| `POST /assistant/sync-context` | Push current zones into the AI assistant's context store |
-| `POST /admin/sync-flagged-to-supabase` | Backfill flagged zones into Supabase |
+## Core API Endpoints
 
-## Data sources
+| Endpoint | Method | Description |
+|---|---|---|
+| `POST /auth/login` | `POST` | Authenticate user with Email & Password, returns JWT access token |
+| `GET /auth/me` | `GET` | Get profile details for authenticated user |
+| `GET /zones` | `GET` | Fetch all flagged satellite zones |
+| `GET /zones/summary` | `GET` | Summary statistics and severity breakdown |
+| `GET /zones/{id}` | `GET` | Retrieve details for a specific zone |
+| `GET /zones/{id}/images` | `GET` | Retrieve before/after satellite imagery URLs |
+| `GET /zones/{id}/report` | `GET` | Download official PDF inspection report |
+| `POST /zones/query` | `POST` | Trigger custom bounding-box satellite scan |
+| `GET /me/subscription` | `GET` | Get current user's subscription and scan limit quota |
+| `POST /assistant/ask` | `POST` | Ask AI assistant questions regarding specific zones |
 
-- **Sentinel-2** surface reflectance imagery via **Google Earth Engine (GEE)**
-- **YOLO** object detection for vision-based construction verification
-  (cranes, buildings, containers)
-- **OpenStreetMap (OSM)** (via Overpass API / OSMnx) for land-use and natural   feature layers
-- **Microsoft Building Footprints** for structure verification
+---
 
-## Images
-<img width="1112" height="895" alt="image" src="https://github.com/user-attachments/assets/95179508-2220-473d-a33f-e24b64a51e40" />
-<img width="1918" height="933" alt="image" src="https://github.com/user-attachments/assets/4cbf1c0e-5b92-4fd5-a95c-d6a7d3a27126" />
-<img width="1911" height="921" alt="image" src="https://github.com/user-attachments/assets/7e5e6294-18f4-44f5-86b6-f203124065bd" />
-<img width="998" height="849" alt="image" src="https://github.com/user-attachments/assets/735f5362-be5b-4c42-bb54-1a972aa81e49" />
+## Data Sources & Integrations
 
+- **Sentinel-2 Imagery**: Google Earth Engine (GEE)
+- **Land-Use Classification**: Bhuvan (NRSC / ISRO) & OpenStreetMap (OSMnx / Overpass)
+- **Building Footprints**: Microsoft Global Building Footprints
+- **Vision Verification**: Custom YOLO object detection models
+- **Database & Persistence**: PostgreSQL (SQLAlchemy ORM)
 
+---
 
+## Preview Screenshots
 
-
-  
+<img width="1112" height="895" alt="Flagged Zone Analysis" src="https://github.com/user-attachments/assets/95179508-2220-473d-a33f-e24b64a51e40" />
+<img width="1918" height="933" alt="Satellite Scan Grid" src="https://github.com/user-attachments/assets/4cbf1c0e-5b92-4fd5-a95c-d6a7d3a27126" />
+<img width="1911" height="921" alt="Interactive Map View" src="https://github.com/user-attachments/assets/7e5e6294-18f4-44f5-86b6-f203124065bd" />
+<img width="998" height="849" alt="Legal & Risk Inspection" src="https://github.com/user-attachments/assets/735f5362-be5b-4c42-bb54-1a972aa81e49" />
