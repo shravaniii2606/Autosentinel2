@@ -107,17 +107,17 @@ def get_cors_origins() -> list[str]:
 
 app = FastAPI()
 
-app.include_router(auth_router)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
-    allow_origin_regex=r"https?://localhost(:[0-9]+)?|https?://127\.0\.0\.1(:[0-9]+)?",
+    allow_origin_regex=r"https?://.*\.vercel\.app|https?://localhost(:[0-9]+)?|https?://127\.0\.0\.1(:[0-9]+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 app.mount(
     "/images",
