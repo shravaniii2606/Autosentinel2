@@ -7,7 +7,8 @@ Nirikshan is an AI-powered satellite monitoring and legal compliance portal. It 
 - Mitanshi Khanna
 - Shravani Kolekar
 
-<img width="1892" height="801" alt="Nirikshan Operations Portal" src="https://github.com/user-attachments/assets/0795cc4c-bfed-44ff-9d60-1248350de0e2" />
+![Uploading image.png…]()
+
 
 ---
 
