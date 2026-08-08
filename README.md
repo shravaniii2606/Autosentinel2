@@ -185,7 +185,8 @@ For local testing or portal access:
 
 ## Preview Screenshots
 
-<img width="1112" height="895" alt="Flagged Zone Analysis" src="https://github.com/user-attachments/assets/95179508-2220-473d-a33f-e24b64a51e40" />
+<img width="2518" height="1346" alt="image" src="https://github.com/user-attachments/assets/d9a4d65b-f957-45df-8dff-e588f68f18bb" />
+
 <img width="1918" height="933" alt="Satellite Scan Grid" src="https://github.com/user-attachments/assets/4cbf1c0e-5b92-4fd5-a95c-d6a7d3a27126" />
 <img width="1911" height="921" alt="Interactive Map View" src="https://github.com/user-attachments/assets/7e5e6294-18f4-44f5-86b6-f203124065bd" />
 <img width="998" height="849" alt="Legal & Risk Inspection" src="https://github.com/user-attachments/assets/735f5362-be5b-4c42-bb54-1a972aa81e49" />
