@@ -15,6 +15,7 @@ export default function SatelliteViewer() {
         auto-rotate-delay="0"
         rotation-per-second="18deg"
         camera-controls
+        interaction-prompt="none"
         disable-zoom
         shadow-intensity="1"
         exposure="0.9"

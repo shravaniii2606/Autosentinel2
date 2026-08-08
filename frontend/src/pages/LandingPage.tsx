@@ -1,5 +1,3 @@
-// @ts-nocheck
-import SatelliteViewer from '../SatelliteViewer'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { MapContainer, TileLayer, Polygon, Polyline, CircleMarker, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -518,9 +516,9 @@ export default function LandingPage() {
           backgroundImage: 'url(/bg_demolition.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center top',
-          opacity: Math.max(0, (1 - scrollBg * 2) * 0.45),
+          opacity: Math.max(0, (1 - scrollBg * 2) * 0.75),
           transition: 'opacity 0.05s linear',
-          filter: 'brightness(0.45) saturate(0.8)',
+          filter: 'brightness(0.75) saturate(0.9)',
         }}
       />
       {/* Layer 2: Satellite scan scene (mid/bottom) */}
@@ -531,9 +529,9 @@ export default function LandingPage() {
           backgroundImage: 'url(/bg_satellite_scan.png)',
           backgroundSize: 'cover',
           backgroundPosition: 'center center',
-          opacity: Math.min(0.45, scrollBg * 0.55),
+          opacity: Math.min(0.75, scrollBg * 0.85),
           transition: 'opacity 0.05s linear',
-          filter: 'brightness(0.4) saturate(0.7)',
+          filter: 'brightness(0.7) saturate(0.9)',
         }}
       />
 
@@ -542,7 +540,7 @@ export default function LandingPage() {
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0"
         style={{
-          background: 'radial-gradient(ellipse 110% 90% at 50% 50%, transparent 25%, #05090a 100%)',
+          background: 'radial-gradient(ellipse 110% 90% at 50% 50%, transparent 40%, rgba(5, 9, 10, 0.7) 100%)',
         }}
       />
       {/* Header */}
@@ -593,12 +591,6 @@ export default function LandingPage() {
             <div className="mt-10 flex flex-wrap justify-center gap-x-7 gap-y-3 font-mono text-xs text-slate-400">
               <span>INPUT: SENTINEL-2</span><span>METHOD: NDBI CHANGE</span><span>OUTPUT: ACTIONABLE ZONES</span>
             </div>
-          </div>
-          <div className="mx-auto mt-12 max-w-4xl border border-slate-600 bg-[#0b1716] p-3 shadow-2xl shadow-black/30">
-            <div className="mb-3 flex items-center border-b border-white/10 pb-3 font-mono text-[10px] tracking-wider text-slate-400">
-              <span>SENTINEL-2</span>
-            </div>
-            <SatelliteViewer />
           </div>
         </div>
       </section>
